@@ -1,7 +1,8 @@
 import mysql.connector
+import mysql.connector.pooling
 import re
 
-def makeDtables(catalogparams):
+def makeDtables(catalogconn):
     try:
         dtables = (
             "CREATE TABLE "
@@ -17,26 +18,29 @@ def makeDtables(catalogparams):
             "partparam2 char(32));"
         )
 
-        connection = mysql.connector.connect(**catalogparams)
-        cursor = connection.cursor()
+        cursor = catalogconn.cursor()
         cursor.execute(dtables)
-        connection.commit()
+        catalogconn.commit()
     except:
         pass
+    finally:
+        cursor.close()
+        catalogconn.close()
 
-def insertTable(catalogparams, tableinfo):
+def insertTable(catalogconn, tableinfo):
     query = (
         "INSERT INTO DTABLES"
         "(tname, nodedriver, nodeurl, nodeuser, nodepasswd, "
         "partmtd, nodeid, partcol, partparam1, partparam2) "
         "VALUES (%(tname)s, %(nodedriver)s, %(nodeurl)s, %(nodeuser)s, %(nodepasswd)s, NULL, %(nodeid)s, NULL, NULL, NULL);"
     )
+    result = False
 
     try:
-        connection = mysql.connector.connect(**catalogparams)
-        cursor = connection.cursor()
+        cursor = catalogconn.cursor()
         cursor.execute(query, tableinfo)
-        connection.commit()
+        catalogconn.commit()
+        result = True
     # except mysql.connection.Error as e:
     #     print("Error inserting row into dtables:")
     #     print(e)
@@ -49,16 +53,18 @@ def insertTable(catalogparams, tableinfo):
         print(tableinfo)
     finally:
         cursor.close()
-        connection.close()
+        catalogconn.close()
+        return result
 
-def removeByTable(catalogparams, tableinfo):
+def removeByTable(catalogconn, tableinfo):
     query = "DELETE FROM DTABLES WHERE tname=%(tname)s;"
+    result = False
 
     try:
-        connection = mysql.connector.connect(**catalogparams)
-        cursor = connection.cursor()
+        cursor = catalogconn.cursor()
         cursor.execute(query, tableinfo)
-        connection.commit()
+        catalogconn.commit()
+        result = True
     except mysql.connection.Error as e:
         print("Error removing rows from dtables:")
         print(e)
@@ -71,9 +77,10 @@ def removeByTable(catalogparams, tableinfo):
         print(tableinfo)
     finally:
         cursor.close()
-        connection.close()
+        catalogconn.close()
+        return result
 
-def partitionUpdate(catalogparams, tableinfo):
+def partitionUpdate(catalogconn, tableinfo):
     update_catalog = (
         "UPDATE DTABLES "
         "SET partmtd=%(partmtd)s, "
@@ -85,10 +92,9 @@ def partitionUpdate(catalogparams, tableinfo):
     result = False
 
     try:
-        connection = mysql.connector.connect(**catalogparams)
-        cursor = connection.cursor()
+        cursor = catalogconn.cursor()
         cursor.execute(update_catalog, tableinfo)
-        connection.commit()
+        catalogconn.commit()
         result = True
     except mysql.connector.Error as err:
         print("Error updating catalog row:")
@@ -102,22 +108,21 @@ def partitionUpdate(catalogparams, tableinfo):
         print(tableinfo)
     finally:
         cursor.close()
-        connection.close()
-    return result
+        catalogconn.close()
+        return result
 
-def queryTables(catalogparams, tableinfo):
+# Used to find rows containing matching tname
+def queryTables(catalogconn, tname):
     catalog_query = (
         "SELECT * "
         "FROM DTABLES "
-        "WHERE tname = %(tname)s;"
+        "WHERE tname = %s;"
     )
 
     try:
-        connection = mysql.connector.connect(**catalogparams)
-        cursor = connection.cursor(dictionary=True)
-        cursor.execute(catalog_query, tableinfo)
+        cursor = catalogconn.cursor(dictionary=True)
+        cursor.execute(catalog_query, (tname,))
         results = cursor.fetchall()
-
     except mysql.connector.Error as err:
         print("Error querying tables:")
         print(err)
@@ -130,7 +135,7 @@ def queryTables(catalogparams, tableinfo):
         print(tableinfo)
     finally:
         cursor.close()
-        connection.close()
+        catalogconn.close()
 
     if len(results) > 0:
         return results
@@ -141,14 +146,15 @@ def getCatalogParams(cataloginfo):
     try:
         (host, port, database) = parseURL(cataloginfo['hostname'])
         return  {
-                    'host': host,
-                    'port': port,
-                    'database': database,
-                    'user': clustercfg['username'],
-                    'password': clustercfg['passwd']
+            'host': host,
+            'port': port,
+            'database': database,
+            'user': cataloginfo['username'],
+            'password': cataloginfo['passwd']
 
-                }
+        }
     except:
+        print("Invalid catalog info.")
         return None
 
 
@@ -177,9 +183,13 @@ if __name__ == "__main__":
     print("\ngetCatalogParams:")
     cparams = getCatalogParams(clustercfg)
 
-    connection = mysql.connector.connect(**cparams)
-    cursor = connection.cursor()
+    cnxpool = mysql.connector.pooling.MySQLConnectionPool(pool_name = "cnxpool", pool_size = 3, **cparams)
+    conn = cnxpool.get_connection()
+    cursor = conn.cursor()
     cursor.execute("DROP TABLE IF EXISTS DTABLES;")
+    print(cursor.fetchone())
+    cursor.close()
+    conn.close()
 
     row1 = {
         'tname': "BOOKS",
@@ -210,24 +220,24 @@ if __name__ == "__main__":
     # Test makeDtables
     input("makeDtables: press ENTER")
 
-    makeDtables(cparams)
+    makeDtables(cnxpool.get_connection())
 
     # Test insertTable
     input("insertTable: press ENTER for row1")
-    insertTable(cparams, row1)
+    insertTable(cnxpool.get_connection(), row1)
     input("insertTable: press ENTER for row2")
-    insertTable(cparams, row2)
+    insertTable(cnxpool.get_connection(), row2)
 
     # Test partitionUpdate
     input("partitionUpdate: press ENTER for row1")
-    partitionUpdate(cparams, row1)
+    partitionUpdate(cnxpool.get_connection(), row1)
     input("partitionUpdate: press ENTER for row2")
-    partitionUpdate(cparams, row2)
+    partitionUpdate(cnxpool.get_connection(), row2)
 
     # Test queryTables
     input("queryTables: press ENTER")
-    print(queryTables(cparams, row1))
+    print(queryTables(cnxpool.get_connection(), row1["tname"]))
 
     # Test removeByTable
     input("removeByTable: press ENTER")
-    removeByTable(cparams, row1)
+    removeByTable(cnxpool.get_connection(), row1)
