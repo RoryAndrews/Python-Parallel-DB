@@ -31,7 +31,7 @@ def processCfg(clustername):
     if 'catalog' in clustercfg:
         keys_needed = set(['driver', 'hostname', 'username', 'passwd'])
         keys = set(clustercfg['catalog'].keys())
-        if not keys_needed.issubset(keys) # if keys_needed is not in keys then not enough keys were provided.
+        if not keys_needed.issubset(keys): # if keys_needed is not in keys then not enough keys were provided.
             print("Cluster Config Error: catalog_info (defined by lines like: catalog.key=value) does not contain all the necessary keys.")
             print("Necessary keys: {}".format(keys_needed))
         else:
@@ -46,7 +46,7 @@ def processCfg(clustername):
         keys_needed = set(['nodeid', 'driver', 'hostname', 'username', 'passwd'])
         for node in clustercfg['nodeinfo']:
             keys = set(node.keys())
-            if not keys_needed.issubset(keys) # if keys_needed is not in keys then not enough keys were provided.
+            if not keys_needed.issubset(keys): # if keys_needed is not in keys then not enough keys were provided.
                 print("Cluster Config Error: A node_info node (defined by lines like: node#.key=value) does not contain all the necessary keys.")
                 print("Necessary keys: {}".format(keys_needed))
                 nodeinfo = None
@@ -69,7 +69,7 @@ def processCfg(clustername):
     if 'partitioninfo' in clustercfg:
         keys_needed = set(['method', 'column'])
         keys = set(clustercfg['partitioninfo'].keys())
-        if not keys_needed.issubset(keys) # if keys_needed is not in keys then not enough keys were provided.
+        if not keys_needed.issubset(keys): # if keys_needed is not in keys then not enough keys were provided.
             print("Cluster Config Error: partition_info (defined by lines like: partition.key=value) does not contain all the necessary keys.")
             print("Necessary keys: {}".format(keys_needed))
         else:
@@ -89,7 +89,7 @@ def processCfg(clustername):
     if 'partitionnodeinfo' in clustercfg:
         keys_needed = set(['param1', 'param2'])
         keys = set(clustercfg['partitionnodeinfo'].keys())
-        if not keys_needed.issubset(keys) # if keys_needed is not in keys then not enough keys were provided.
+        if not keys_needed.issubset(keys): # if keys_needed is not in keys then not enough keys were provided.
             print("Cluster Config Error: partition_node_info (defined by lines like: partition.node#.key=value) does not contain all the necessary keys.")
             print("Necessary keys: {}".format(keys_needed))
         else:
