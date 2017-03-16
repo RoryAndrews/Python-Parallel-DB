@@ -1,0 +1,7 @@
+COMMA=1
+STUFF=2
+STRING=3
+QUOTE=4
+NEWLINE=5
+','=1
+'"'=4
