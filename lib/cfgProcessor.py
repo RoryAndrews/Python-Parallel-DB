@@ -1,3 +1,5 @@
+import sys
+
 # Antlr4 Library
 from antlr4 import *
 from antlr4.InputStream import InputStream
@@ -8,23 +10,32 @@ from ClusterConfigGrammar.ClusterConfigParser import ClusterConfigParser
 from ClusterConfigGrammar.ClusterConfigListener import ClusterConfigListener
 # from ClusterConfigLoader import ClusterConfigLoader
 
-def getClusterCfg(clustername):
-    cluster_input = FileStream(clustername)
-    cluster_lexer = ClusterConfigLexer(cluster_input)
-    cluster_stream = CommonTokenStream(cluster_lexer)
-    cluster_parser = ClusterConfigParser(cluster_stream)
-    cluster_tree = cluster_parser.config()
+def process(clustername):
+    clustercfg = getClusterCfg(clustername)
+    if clustercfg:
+        processCfg(clustercfg)
+    else:
+        print("There is a syntax error in your config file. It could not be loaded.")
 
-    cluster_loader = ClusterConfigLoader()
-    cluster_walker = ParseTreeWalker()
-    cluster_walker.walk(cluster_loader, cluster_tree)
-    clustercfg = cluster_loader.getCFG()
+def getClusterCfg(clustername):
+    try:
+        cluster_input = FileStream(clustername)
+        cluster_lexer = ClusterConfigLexer(cluster_input)
+        cluster_stream = CommonTokenStream(cluster_lexer)
+        cluster_parser = ClusterConfigParser(cluster_stream)
+        cluster_tree = cluster_parser.config()
+
+        cluster_loader = ClusterConfigLoader()
+        cluster_walker = ParseTreeWalker()
+        cluster_walker.walk(cluster_loader, cluster_tree)
+        clustercfg = cluster_loader.getCFG()
+    except:
+        clustercfg = None
+
     return clustercfg
 
 # Returns cataloginfo, numnodes, nodeinfo, tablename, partitioninfo, partitionnodeinfo
-def processCfg(clustername):
-    clustercfg = getClusterCfg(clustername)
-
+def processCfg(clustercfg):
     # [cataloginfo]
     # Dictionary with the keys: driver, hostname, username, passwd
     cataloginfo = None
@@ -33,7 +44,7 @@ def processCfg(clustername):
         keys = set(clustercfg['catalog'].keys())
         if not keys_needed.issubset(keys): # if keys_needed is not in keys then not enough keys were provided.
             print("Cluster Config Error: catalog_info (defined by lines like: catalog.key=value) does not contain all the necessary keys.")
-            print("Necessary keys: {}".format(keys_needed))
+            print("Missing key(s): {}".format(keys_needed - keys))
         else:
             cataloginfo = clustercfg['catalog']
     else:
@@ -47,8 +58,8 @@ def processCfg(clustername):
         for node in clustercfg['nodeinfo']:
             keys = set(node.keys())
             if not keys_needed.issubset(keys): # if keys_needed is not in keys then not enough keys were provided.
-                print("Cluster Config Error: A node_info node (defined by lines like: node#.key=value) does not contain all the necessary keys.")
-                print("Necessary keys: {}".format(keys_needed))
+                print("Cluster Config Error: A node_info node [nodeid:{}] (defined by lines like: node#.key=value) does not contain all the necessary keys.".format(node['nodeid']))
+                print("Missing key(s): {}".format(keys_needed - keys))
                 nodeinfo = None
                 break
             else:
@@ -71,9 +82,9 @@ def processCfg(clustername):
         keys = set(clustercfg['partitioninfo'].keys())
         if not keys_needed.issubset(keys): # if keys_needed is not in keys then not enough keys were provided.
             print("Cluster Config Error: partition_info (defined by lines like: partition.key=value) does not contain all the necessary keys.")
-            print("Necessary keys: {}".format(keys_needed))
+            print("Missing key(s): {}".format(keys_needed - keys))
         else:
-            partitioninfo = clustercfg['partition_info']
+            partitioninfo = clustercfg['partitioninfo']
             # If method = range or hash then you need a key called column
             if (partitioninfo['method'] == 'range' or partitioninfo['method'] == 'hash') and not 'column' in partitioninfo:
                 print("Cluster Config Error: partition_info is missing key named column (required when method=range or method=hash)")
@@ -87,14 +98,17 @@ def processCfg(clustername):
     # list of nodes containing dictionaries with keys: param1, param2
     partitionnodeinfo = None
     if 'partitionnodeinfo' in clustercfg:
-        keys_needed = set(['param1', 'param2'])
-        keys = set(clustercfg['partitionnodeinfo'].keys())
-        if not keys_needed.issubset(keys): # if keys_needed is not in keys then not enough keys were provided.
-            print("Cluster Config Error: partition_node_info (defined by lines like: partition.node#.key=value) does not contain all the necessary keys.")
-            print("Necessary keys: {}".format(keys_needed))
-        else:
+        keys_needed = set(['param1', 'param2', 'nodeid'])
+        for node in clustercfg['partitionnodeinfo']:
+            keys = set(node.keys())
+            if not keys_needed.issubset(keys): # if keys_needed is not in keys then not enough keys were provided.
+                print("Cluster Config Error: partition_node_info [nodeid:{}] (defined by lines like: partition.node#.key=value) does not contain all the necessary keys.".format(node['nodeid']))
+                print("Missing key(s): {}".format(keys_needed - keys))
+                partitionnodeinfo = None
+            else:
+                partitionnodeinfo = True
+        if partitionnodeinfo:
             partitionnodeinfo = clustercfg['partitionnodeinfo']
-
 
     # [numnodes]
     # Optional
@@ -102,7 +116,7 @@ def processCfg(clustername):
     if 'numnodes' in clustercfg:
         numnodes = clustercfg['numnodes']
         if tablename and partitionnodeinfo:
-            if not len(partitionnodeinfo) == numnodes:
+            if not (len(partitionnodeinfo) == numnodes):
                 print("Cluster Config Error: numnodes is not equal to the number of nodes given in the config for partitioning.")
                 print("Setting numnodes to be equal to number of nodes in the config: From {} to {}".format(numnodes, len(partitionnodeinfo)))
         elif nodeinfo:
@@ -115,4 +129,34 @@ def processCfg(clustername):
         elif nodeinfo:
             numnodes = len(nodeinfo)
 
+    sorted(nodeinfo, key=lambda x: x['nodeid'])
+    for index, node in enumerate(nodeinfo):
+        if not (index + 1 == node['nodeid']):
+            nodeinfo = None
+            print("Cluster Config Error: nodeinfo (defined by lines like node#.key=value) nodeids were not complete (must start at 1 and there can not be a gap i.e. 1,2,4,5).")
+            print("Problem node: {} (was expecting nodeid={})".format(node, index+1))
+            break
+
+
+
     return (cataloginfo, numnodes, nodeinfo, tablename, partitioninfo, partitionnodeinfo)
+
+if __name__ == "__main__":
+    if len(sys.argv) > 1:
+        clustername = sys.argv[1]
+    else:
+        clustername = 'clustertestparse.cfg'
+
+    clustercfg = getClusterCfg(clustername)
+
+    print("Clustercfg:")
+    print(clustercfg)
+
+    (cataloginfo, numnodes, nodeinfo, tablename, partitioninfo, partitionnodeinfo) = processCfg(clustercfg)
+
+    print("\ncataloginfo:\n{}".format(cataloginfo))
+    print("\nnumnodes:\n{}".format(numnodes))
+    print("\nnodeinfo:\n{}".format(nodeinfo))
+    print("\ntablename:\n{}".format(tablename))
+    print("\npartitioninfo:\n{}".format(partitioninfo))
+    print("\npartitionnodeinfo:\n{}".format(partitionnodeinfo))
