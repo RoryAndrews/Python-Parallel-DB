@@ -154,8 +154,11 @@ def getCatalogParams(cataloginfo):
 
         }
     except:
-        print("Invalid catalog info.")
+        print("Invalid connection info for: {}".format(cataloginfo['hostname']))
         return None
+
+def getNodeParams(nodeinfo):
+    return getCatalogParams(nodeinfo)
 
 
 # Grabs the address, port, and database from the hostname url.
