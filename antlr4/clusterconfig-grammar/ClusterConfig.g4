@@ -3,13 +3,17 @@ grammar ClusterConfig;
 config: stat+ ;
 
 stat: catalog_info
+    | localnode_info
     | node_info
+    | partition_node_info
     | partition_info
     | numnodes
     | tablename
     ;
 
 catalog_info: 'catalog' DOT key EQUALS value ;
+
+localnode_info: 'localnode' DOT key EQUALS value ;
 
 node_info: 'node' nodeid DOT key EQUALS value ;
 
