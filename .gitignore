@@ -88,5 +88,3 @@ ENV/
 .ropeproject
 
 antlr4/antlr-4\.6-complete\.jar
-
-ClusterConfigGrammar/
