@@ -1,6 +1,6 @@
-from lib.cfgProcessor import cfgProcessor
-from csvLoader import csvLoader
-
+from lib.cfgProcessor import *
+# from csvLoader import csvLoader
+import sys
 
 if __name__ =="__main__":
     if len(sys.argv) > 1:

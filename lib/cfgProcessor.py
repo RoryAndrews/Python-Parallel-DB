@@ -6,7 +6,7 @@ from antlr4.InputStream import InputStream
 from ClusterConfigGrammar.ClusterConfigLexer import ClusterConfigLexer
 from ClusterConfigGrammar.ClusterConfigParser import ClusterConfigParser
 from ClusterConfigGrammar.ClusterConfigListener import ClusterConfigListener
-from ClusterConfigLoader import ClusterConfigLoader
+# from ClusterConfigLoader import ClusterConfigLoader
 
 def getClusterCfg(clustername):
     cluster_input = FileStream(clustername)

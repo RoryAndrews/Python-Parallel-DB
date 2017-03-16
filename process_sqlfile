@@ -1,0 +1,3 @@
+SELECT face, ID
+FROM ORDERS S, Books
+WHERE face = 2;
