@@ -24,7 +24,7 @@ class ConnectionLoader(object):
             insert_statement = insert_statement[:-2] # to remove final ", "
             insert_statement += ") VALUES ("
             for i in fieldnames:
-                insert_statement += "%s, " 
+                insert_statement += "%s, "
             insert_statement = insert_statement[:-2] # to remove final ", "
             insert_statement += ")"
 
@@ -49,11 +49,11 @@ class ConnectionLoader(object):
             if not result:
                 print("Error updating catalog.\ntableinfo: {}".format(tableinfo))
         else:
-            "Commit Error: No connection remaining.\ntableinfo: {}".format(tableinfo))
+            print("Commit Error: No connection remaining.\ntableinfo: {}".format(tableinfo))
 
     def rollback(self):
         if self.nodeconn:
             self.nodeconn.rollback()
             self.nodeconn.close()
         else:
-            "Rollback Error: No connection remaining.\ntableinfo: {}".format(tableinfo))
+            print("Rollback Error: No connection remaining.\ntableinfo: {}".format(tableinfo))

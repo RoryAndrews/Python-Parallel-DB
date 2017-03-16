@@ -11,7 +11,9 @@ stat: catalog_info
 
 catalog_info: 'catalog' DOT key EQUALS value ;
 
-node_info: 'partition' DOT 'node' nodeid DOT key EQUALS value ;
+node_info: 'node' nodeid DOT key EQUALS value ;
+
+partition_node_info: 'partition' DOT 'node' nodeid DOT key EQUALS value ;
 
 partition_info: 'partition' DOT key EQUALS value ;
 
