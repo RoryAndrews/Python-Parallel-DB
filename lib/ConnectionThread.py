@@ -4,6 +4,17 @@ import catdb
 import re
 
 # Allows multithreading when creating a connection to database and executing a ddl.
+# threadID: a number representing this unique thread.
+# catalogconn: a mysql connection for the catalog.
+# nodeconn: a mysql connection for the node to be executed on.
+# sqlstatement: the exact SQL statement that will be executed on the node.
+# sqlstatement_name: used for error message.
+# dtablerow: A dictionary with keys matching the columns in DTABLES.
+#   dtablerow must contain values for the following keys depending on the sql statement:
+#       CREATE TABLE: tname, nodedriver, nodeurl, nodeuser, nodepasswd, nodeid
+#       DROP TABLE: tname
+#       PARTITION UPDATE (using csvLoader): tname, partmtd, partcol, partparam1, partparam2, nodeid
+#       OTHER: dtablerow is not needed.
 class ConnectionThread (threading.Thread):
     def __init__(self, threadID, catalogconn, nodeconn, sqlstatement, sqlstatement_name, dtablerow=None):
         threading.Thread.__init__(self)
