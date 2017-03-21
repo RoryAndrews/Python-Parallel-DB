@@ -4,29 +4,13 @@ import re
 import mysql.connector
 import mysql.connector.pooling
 
-from antlr4 import *
-from antlr4.InputStream import InputStream
-
-from lib.CSVGrammar.csvfileLexer import csvfileLexer
-from lib.CSVGrammar.csvfileParser import csvfileParser
-from lib.CSVGrammar.csvfileListener import csvfileListener
-from lib.csvfileLoader import csvfileLoader
-
 from lib.ConnectionLoader import ConnectionLoader
 from lib import catdb
 
 def parseCSV(csvname):
-    # Use antlr4 to parse csvfile
-    csv_input = FileStream(csvname)
-    csv_lexer = csvfileLexer(csv_input)
-    csv_stream = CommonTokenStream(csv_lexer)
-    csv_parser = csvfileParser(csv_stream)
-    csv_tree = csv_parser.rows()
-
-    csv_loader = csvfileLoader()
-    csv_walker = ParseTreeWalker()
-    csv_walker.walk(csv_loader, csv_tree)
-    csvfile = csv_loader.getCSV()
+    try:
+    except:
+        csvfile = None
 
     # print("\ncsvfile (unsorted):") # COMMENT OUT
     # for x in csvfile: print(x) # COMMENT OUT
@@ -38,8 +22,8 @@ def loadCSV(cataloginfo, numnodes, tablename, partitioninfo, partitionnodeinfo, 
     # Get partition method and get list of connectionLoaders
     conn_list = None
 
-    cparams = catdb.getCatalogParams(clustercfg['catalog'])
-    tableinfo_list = catdb.queryTables(mysql.connector.connect(**cparams), clustercfg['tablename'])
+    cparams = catdb.getCatalogParams(cataloginfo)
+    tableinfo_list = catdb.queryTables(mysql.connector.connect(**cparams), tablename)
     print(clustercfg)
     return False
 
@@ -235,11 +219,11 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:
         clustername = sys.argv[1]
     else:
-        clustername = 'clustercfg'
+        clustername = 'cluster.cfg'
     if len(sys.argv) > 2:
         csvname = sys.argv[2]
     else:
-        csvname = 'csvfile'
+        csvname = 'data.csv'
 
     (clustercfg, csvfile) = parse(clustername, csvname)
     load(clustercfg, csvfile)
