@@ -6,7 +6,7 @@ if __name__ =="__main__":
     if len(sys.argv) > 1:
         clustername = sys.argv[1]
     else:
-        clustername = 'clustercfg'
+        clustername = 'cluster.cfg'
     if len(sys.argv) > 2:
         filename = sys.argv[2]
     else:
@@ -41,7 +41,7 @@ if __name__ =="__main__":
 
     if cataloginfo:
         if tablename:
-            csvLoader.loadCSV(
+            loadCSV.loadCSV(
                 cataloginfo=cataloginfo, numnodes=numnodes, tablename=tablename,
                 partitioninfo=partitioninfo, partitionnodeinfo=partitionnodeinfo,
                 csvfilename=filename
