@@ -775,8 +775,6 @@ POWER_OP: '^' ;
 GTH	: '>' ;
 LTH	: '<' ;
 
-
-
 INTEGER_NUM		: ('0'..'9')+ ;
 
 fragment HEX_DIGIT_FRAGMENT: ( 'a'..'f' | 'A'..'F' | '0'..'9' ) ;
@@ -1085,7 +1083,71 @@ group_functions:
 	| VARIANCE
 ;
 
-escape_id           : ID | '`' ID '`';
+
+
+escape_id       : ID
+                | '`' ID '`'
+                | ID?
+                ~(  ARROW
+                  | EQ_SYM
+                  | NOT_EQ
+                  | LET
+                  | GET
+                  | SET_VAR
+                  | SHIFT_LEFT
+                  | SHIFT_RIGHT
+                  | ALL_FIELDS
+                  | SEMI
+                  | COLON
+                  | DOT
+                  | COMMA
+                  | ASTERISK
+                  | RPAREN
+                  | LPAREN
+                  | RBRACK
+                  | LBRACK
+                  | PLUS
+                  | MINUS
+                  | NEGATION
+                  | VERTBAR
+                  | BITAND
+                  | POWER_OP
+                  | GTH
+                  | LTH
+									| WHITE_SPACE
+                )
+
+                (ID?
+                ~(  ARROW
+                  | EQ_SYM
+                  | NOT_EQ
+                  | LET
+                  | GET
+                  | SET_VAR
+                  | SHIFT_LEFT
+                  | SHIFT_RIGHT
+                  | ALL_FIELDS
+                  | SEMI
+                  | COLON
+                  | DOT
+                  | COMMA
+                  | ASTERISK
+                  | RPAREN
+                  | LPAREN
+                  | RBRACK
+                  | LBRACK
+                  | PLUS
+                  | MINUS
+                  | NEGATION
+                  | VERTBAR
+                  | BITAND
+                  | POWER_OP
+                  | GTH
+                  | LTH
+									| WHITE_SPACE
+                ))?
+;
+
 schema_name			: escape_id;
 table_name			: escape_id;
 column_name			: escape_id;
@@ -1278,7 +1340,7 @@ select_expression:
 ;
 
 where_clause:
-	WHERE expression
+	WHERE expression (COMMA expression)*
 ;
 
 groupby_clause:
@@ -1386,14 +1448,14 @@ column_value_list:	LPAREN (bit_expr|DEFAULT) (COMMA (bit_expr|DEFAULT) )* RPAREN
 
 insert_statement2:
 	insert_header
-	set_columns_cluase
+	set_columns_clause
 	( insert_subfix )?
 ;
 
-set_columns_cluase:	SET_SYM set_column_cluase ( COMMA set_column_cluase )*
+set_columns_clause:	SET_SYM set_column_clause ( COMMA set_column_clause )*
 ;
 
-set_column_cluase:	column_spec EQ_SYM (expression|DEFAULT)
+set_column_clause:	column_spec EQ_SYM (expression|DEFAULT)
 ;
 
 insert_statement3:
@@ -1409,7 +1471,7 @@ update_statements :
 
 single_table_update_statement:
 UPDATE (LOW_PRIORITY)? (IGNORE_SYM)? table_reference
-	set_columns_cluase
+	set_columns_clause
 	(where_clause)?
 	(orderby_clause)?
 	(limit_clause)?
@@ -1417,6 +1479,6 @@ UPDATE (LOW_PRIORITY)? (IGNORE_SYM)? table_reference
 
 multiple_table_update_statement:
 	UPDATE (LOW_PRIORITY)? (IGNORE_SYM)? table_references
-	set_columns_cluase
+	set_columns_clause
 	(where_clause)?
 ;

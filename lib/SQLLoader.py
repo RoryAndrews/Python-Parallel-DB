@@ -10,29 +10,13 @@ class SQLLoader(MySQLListener):
 
     def __init__(self):
         self.sql = {}
-        self.numTables = 0
-        self.numSelect = 0
-        self.numWhere = 0
-        self.numAlias = 0
-        self.tableList = list()
         self.alias = dict()
-        self.where = list()
+        self.expression = list()
+        self.select = list()
+        self.test = None
 
     def getSQL(self):
         return self.sql
-
-    def getSelectList(self,ctx):
-        for i in range(ctx.getChildCount()):
-            # print (i)
-            child = ctx.getChild(i)
-            if type(ctx.getChild(i)).__name__ == 'Select_listContext':
-                return child.getText()
-
-    def getTableRef(self,ctx):
-        for i in range(ctx.getChildCount()):
-            child = ctx.getChild(i)
-            if type(child).__name__ == 'Table_referencesContext':
-                return child.getText()
 
     def getWhere(self,ctx):
         for i in range(ctx.getChildCount()):
@@ -40,35 +24,29 @@ class SQLLoader(MySQLListener):
             if type(child).__name__ == 'Where_clauseContext':
                 return child.getText()
 
-    def commaCount(self,parse_string):
-        return parse_string.count(',')
+    def getExpression(self, ctx):
+        # first child will have 2 or more children
+        # 1st child is WHERE, 2nd child is expression, every other child in addition is an expression
+        # The next generation is the bool primary, this one should have three children, predicate, relational_op, and preidcate
+        
+        return ctx.getChild(1).getChild(0).getChild(2).getText()
 
-    def aliasCount(self,parse_string):
-        return parse_string.count('.')
+        # for i in range(1,ctx.getChildCount(),2):
+        #
+        # return ctx.getChild(1).getChild(0).getChildCount()
 
-    def processSelect (self, parse_string):
-        self.numSelect = (self.commaCount(parse_string) + 1)
-        self.numAlias = self.aliasCount(parse_string)
+    def getSelect(self,ctx):
+        self.select.insert(-1, (ctx.getChild(0).getChild(0).getText(), ctx.getChild(0).getChild(2).getText()))
 
-        if self.numAlias > 0:
-            temp_alias = parse_string.split('.')
+    def getTables(self,ctx):
+        for i in range(0,ctx.getChildCount(),2):
+            self.alias['{}'.format(ctx.getChild(i).getChild(0).getChild(0).getChild(1).getText())] = ctx.getChild(i).getChild(0).getChild(0).getChild(0).getText()
 
+    def enterDisplayed_column(self, ctx:MySQLParser.Displayed_columnContext):
+        self.getSelect(ctx)
 
-    def processFrom(self, parse_string):
-        self.numTables = (self.commaCount(parse_string) + 1)
-        temp = parse_string.split(',')
-        for x in range(self.numTables):
-            key = 'table{}'.format(x)
-            self.sql[key] = temp[x]
+    def enterTable_references(self, ctx:MySQLParser.Table_referencesContext):
+        self.getTables(ctx)
 
-
-    # Enter a parse tree produced by MySQLParser#select_expression.
-    def enterSelect_expression(self, ctx:MySQLParser.Select_expressionContext):
-        selectList = self.getSelectList(ctx)
-        table_ref = self.getTableRef(ctx)
-        wher = self.getWhere(ctx)
-
-        self.processFrom(table_ref)
-        self.sql['SELECT'] = selectList
-        self.sql['FROM'] = table_ref
-        self.sql['WHERE'] = wher
+    def enterWhere_clause(self, ctx:MySQLParser.Where_clauseContext):
+        self.test = self.getExpression(ctx)

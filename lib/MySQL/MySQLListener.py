@@ -694,21 +694,21 @@ class MySQLListener(ParseTreeListener):
         pass
 
 
-    # Enter a parse tree produced by MySQLParser#set_columns_cluase.
-    def enterSet_columns_cluase(self, ctx:MySQLParser.Set_columns_cluaseContext):
+    # Enter a parse tree produced by MySQLParser#set_columns_clause.
+    def enterSet_columns_clause(self, ctx:MySQLParser.Set_columns_clauseContext):
         pass
 
-    # Exit a parse tree produced by MySQLParser#set_columns_cluase.
-    def exitSet_columns_cluase(self, ctx:MySQLParser.Set_columns_cluaseContext):
+    # Exit a parse tree produced by MySQLParser#set_columns_clause.
+    def exitSet_columns_clause(self, ctx:MySQLParser.Set_columns_clauseContext):
         pass
 
 
-    # Enter a parse tree produced by MySQLParser#set_column_cluase.
-    def enterSet_column_cluase(self, ctx:MySQLParser.Set_column_cluaseContext):
+    # Enter a parse tree produced by MySQLParser#set_column_clause.
+    def enterSet_column_clause(self, ctx:MySQLParser.Set_column_clauseContext):
         pass
 
-    # Exit a parse tree produced by MySQLParser#set_column_cluase.
-    def exitSet_column_cluase(self, ctx:MySQLParser.Set_column_cluaseContext):
+    # Exit a parse tree produced by MySQLParser#set_column_clause.
+    def exitSet_column_clause(self, ctx:MySQLParser.Set_column_clauseContext):
         pass
 
 
