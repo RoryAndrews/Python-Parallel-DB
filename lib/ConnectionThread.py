@@ -1,9 +1,9 @@
 import threading
-import mysql.connector
+import mysql.connector.pooling
 import catdb
 import re
 
-# Allows multithreading when creating a connection to database and executing a ddl.
+# Allows multithreading when creating a connection to database and executing an SQL statement.
 # threadID: a number representing this unique thread.
 # catalogconn: a mysql connection for the catalog.
 # nodeconn: a mysql connection for the node to be executed on.
@@ -36,6 +36,7 @@ class ConnectionThread (threading.Thread):
                 if result:
                     self.nodeconn.commit()
                 else:
+                    print("Rolling back transaction for thread {}".format(self.threadID))
                     self.nodeconn.rollback()
             elif re.search("DROP TABLE", self.sqlstatement, flags=re.IGNORECASE | re.MULTILINE) and dtablerow:
                 cursor.execute(self.sqlstatement)
@@ -43,12 +44,12 @@ class ConnectionThread (threading.Thread):
                 if result:
                     self.nodeconn.commit()
                 else:
+                    print("Rolling back transaction for thread {}".format(self.threadID))
                     self.nodeconn.rollback()
-            else
+            else:
                 cursor.execute(self.sqlstatement)
                 self.nodeconn.commit()
-
-            print("[{}:{}/{}]: {} success".format(self.nodeconn.host, self.nodeconn.port, self.nodeconn.database, self.sqlstatement_name))
+            print("[{}:{}/{}]: {} success".format(self.nodeconn.server_host, self.nodeconn.server_port, self.nodeconn.database, self.sqlstatement_name))
         except mysql.connector.Error as err:
             print("[{}:{}/{}]: {} failure".format(self.nodeconn.host, self.nodeconn.port, self.nodeconn.database, self.sqlstatement_name))
             print("SQL ERROR: {}".format(err.msg))
@@ -90,15 +91,15 @@ if __name__ == "__main__":
     cursor.close()
     connection.close()
 
-    cnxpool = mysql.connector.connect(pool_name = "cnxpool", pool_size = "5", **cparams)
+    cnxpool = mysql.connector.pooling.MySQLConnectionPool(pool_name = "cnxpool", pool_size = 6, **cparams)
 
     catdb.makeDtables(cnxpool.get_connection())
 
     input("Press Enter to create table")
-
-    thread = ConnectionThread(dtablerow['nodeid'], cnxpool.get_connection(), cnxpool.get_connection(), sqlstatement1, dtablerow)
+    thread = ConnectionThread(dtablerow['nodeid'], cnxpool.get_connection(), cnxpool.get_connection(), sqlstatement1, "sqlstatement1", dtablerow)
     thread.run()
 
     input("Press Enter to drop table")
 
-    thread = ConnectionThread(dtablerow['nodeid'], cnxpool.get_connection(), cnxpool.get_connection(), sqlstatement2, dtablerow)
+    thread = ConnectionThread(dtablerow['nodeid'], cnxpool.get_connection(), cnxpool.get_connection(), sqlstatement2, "sqlstatement2", dtablerow)
+    thread.run()
