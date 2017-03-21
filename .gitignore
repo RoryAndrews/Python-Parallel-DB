@@ -88,3 +88,9 @@ ENV/
 .ropeproject
 
 antlr4/antlr-4\.6-complete\.jar
+
+antlr4/mysql-grammar/process_sqlfile
+
+antlr4/mysql-grammar/process_sqlfile0
+
+antlr4/mysql-grammar/process_sqlfile1
