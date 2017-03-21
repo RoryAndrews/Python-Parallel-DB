@@ -47,10 +47,8 @@ def insertTable(catalogconn, tableinfo):
     #     print("For row:")
     #     print(tableinfo)
     except BaseException as e:
-        print("Error inserting row into dtables:")
         print(str(e))
-        print("For row:")
-        print(tableinfo)
+        print("Error inserting row into dtables for row: {}".format(tableinfo))
     finally:
         cursor.close()
         catalogconn.close()
@@ -65,16 +63,15 @@ def removeByTable(catalogconn, tableinfo):
         cursor.execute(query, tableinfo)
         catalogconn.commit()
         result = True
-    except mysql.connection.Error as e:
-        print("Error removing rows from dtables:")
-        print(e)
-        print("For tableinfo (rows containing tname):")
-        print(tableinfo)
+    # except mysql.connection.Error as e:
+    #     print("Error removing rows from dtables:")
+    #     print(e)
+    #     print("For tableinfo (rows containing tname):")
+    #     print(tableinfo)
     except BaseException as e:
-        print("Error removing rows from dtables:")
         print(str(e))
-        print("For tableinfo (rows containing tname):")
-        print(tableinfo)
+        print("Error removing rows from dtables:")
+        print("For tableinfo (rows containing tname): {}".format(tableinfo))
     finally:
         cursor.close()
         catalogconn.close()
@@ -96,16 +93,14 @@ def partitionUpdate(catalogconn, tableinfo):
         cursor.execute(update_catalog, tableinfo)
         catalogconn.commit()
         result = True
-    except mysql.connector.Error as err:
-        print("Error updating catalog row:")
-        print(err)
-        print("For row:")
-        print(tableinfo)
+    # except mysql.connector.Error as err:
+    #     print("Error updating catalog row:")
+    #     print(err)
+    #     print("For row:")
+    #     print(tableinfo)
     except BaseException as err:
-        print("Error updating catalog row:")
         print(str(err))
-        print("For row:")
-        print(tableinfo)
+        print("Error updating catalog row for row: {}".format(tableinfo))
     finally:
         cursor.close()
         catalogconn.close()
@@ -123,16 +118,14 @@ def queryTables(catalogconn, tname):
         cursor = catalogconn.cursor(dictionary=True)
         cursor.execute(catalog_query, (tname,))
         results = cursor.fetchall()
-    except mysql.connector.Error as err:
-        print("Error querying tables:")
-        print(err)
-        print("For row:")
-        print(tableinfo)
+    # except mysql.connector.Error as err:
+    #     print("Error querying tables:")
+    #     print(err)
+    #     print("For row:")
+    #     print(tableinfo)
     except BaseException as err:
-        print("Error querying tables:")
         print(str(err))
-        print("For row:")
-        print(tableinfo)
+        print("Error querying tables for row: {}".format(tableinfo))
     finally:
         cursor.close()
         catalogconn.close()
@@ -154,7 +147,6 @@ def getCatalogParams(cataloginfo):
 
         }
     except:
-        print("Invalid connection info for: {}".format(cataloginfo['hostname']))
         return None
 
 def getNodeParams(nodeinfo):
