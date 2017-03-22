@@ -8,14 +8,13 @@ from antlr4.InputStream import InputStream
 from ClusterConfigGrammar.ClusterConfigLexer import ClusterConfigLexer
 from ClusterConfigGrammar.ClusterConfigParser import ClusterConfigParser
 from ClusterConfigGrammar.ClusterConfigListener import ClusterConfigListener
-# from ClusterConfigLoader import ClusterConfigLoader
+from ClusterConfigLoader import ClusterConfigLoader
 
 def process(clustername):
     clustercfg = getClusterCfg(clustername)
     if clustercfg:
-        processCfg(clustercfg)
-    else:
-        print("There is a syntax error in your config file. It could not be loaded.")
+        return processCfg(clustercfg)
+
 
 def getClusterCfg(clustername):
     try:
@@ -29,7 +28,9 @@ def getClusterCfg(clustername):
         cluster_walker = ParseTreeWalker()
         cluster_walker.walk(cluster_loader, cluster_tree)
         clustercfg = cluster_loader.getCFG()
-    except:
+    except BaseException as e:
+        print(str(e))
+        print("cfgProcessor: Failed to parse cluster config file.")
         clustercfg = None
 
     return clustercfg
@@ -129,13 +130,23 @@ def processCfg(clustercfg):
         elif nodeinfo:
             numnodes = len(nodeinfo)
 
-    sorted(nodeinfo, key=lambda x: x['nodeid'])
-    for index, node in enumerate(nodeinfo):
-        if not (index + 1 == node['nodeid']):
-            nodeinfo = None
-            print("Cluster Config Error: nodeinfo (defined by lines like node#.key=value) nodeids were not complete (must start at 1 and there can not be a gap i.e. 1,2,4,5).")
-            print("Problem node: {} (was expecting nodeid={})".format(node, index+1))
-            break
+    if nodeinfo:
+        sorted(nodeinfo, key=lambda x: x['nodeid'])
+        for index, node in enumerate(nodeinfo):
+            if not (index + 1 == node['nodeid']):
+                nodeinfo = None
+                print("Cluster Config Error: nodeinfo (defined by lines like node#.key=value) nodeids were not complete (must start at 1 and there can not be a gap i.e. 1,2,4,5).")
+                print("Problem node id: {} (was expecting nodeid={})".format(node, index+1))
+                break
+
+    if partitionnodeinfo:
+        sorted(partitionnodeinfo, key=lambda x: x['nodeid'])
+        for index, node in enumerate(partitionnodeinfo):
+            if not (index + 1 == node['nodeid']):
+                partitionnodeinfo = None
+                print("Cluster Config Error: partitionnodeinfo (defined by lines like partition.node#.key=value) nodeids were not complete (must start at 1 and there can not be a gap i.e. 1,2,4,5).")
+                print("Problem node id: {} (was expecting nodeid={})".format(node, index+1))
+                break
 
 
 
@@ -147,12 +158,14 @@ if __name__ == "__main__":
     else:
         clustername = 'clustertestparse.cfg'
 
+    print("clustername: {}".format(clustername))
+
     clustercfg = getClusterCfg(clustername)
 
     print("Clustercfg:")
     print(clustercfg)
 
-    (cataloginfo, numnodes, nodeinfo, tablename, partitioninfo, partitionnodeinfo) = processCfg(clustercfg)
+    (cataloginfo, numnodes, nodeinfo, tablename, partitioninfo, partitionnodeinfo) = process(clustername)
 
     print("\ncataloginfo:\n{}".format(cataloginfo))
     print("\nnumnodes:\n{}".format(numnodes))
