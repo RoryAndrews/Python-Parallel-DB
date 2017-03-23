@@ -20,6 +20,8 @@ def makeDtables(catalogconn):
         cursor = catalogconn.cursor()
         cursor.execute(dtables)
         catalogconn.commit()
+    except mysql.connector.ProgrammingError:
+        pass
     except BaseException as e:
         print("Error in catdb.makeDtables(): {}".format(str(e)))
     finally:

@@ -1,5 +1,6 @@
 import sys
 import re
+import csv
 
 import mysql.connector
 import mysql.connector.pooling
@@ -8,6 +9,12 @@ from lib.ConnectionLoader import ConnectionLoader
 from lib import catdb
 
 def parseCSV(csvname):
+    csvfile = list()
+    with open(csvname) as csvfile:
+        readCSV = csv.reader(csvfile, delimiter=',')
+        for row in readCSV:
+            print(row)
+
     try:
         print("Filler to get this working. Add functionality.")
     except BaseException as e:
@@ -23,14 +30,34 @@ def parseCSV(csvname):
 
 def loadCSV(cataloginfo, numnodes, tablename, partitioninfo, partitionnodeinfo, csvfilename):
     # Get partition method and get list of connectionLoaders
-    conn_list = None
+    if not cataloginfo or not tablename or not partitioninfo or not csvfilename:
+        print("loadCSV was not given the needed information to load the csv.")
+        return False
 
     cparams = catdb.getCatalogParams(cataloginfo)
-    tableinfo_list = catdb.queryTables(mysql.connector.connect(**cparams), tablename)
-    # print(clustercfg)
-    print ("Suppose to print clustercfg, don't know what clustercfg is.")
-    return False
+    if not cparams:
+        print("Catalog info could not be processed into connection parameters from the cluster config.")
+        return False
 
+    tableinfo_list = catdb.queryTables(mysql.connector.connect(**cparams), tablename)
+
+
+    if partitionnodeinfo:
+        if len(tableinfo_list) != len(partitionnodeinfo) or len(tableinfo_list) != numnodes:
+            print("Error in loadCSV: Catalog contains more nodes than specified in the cluster config.")
+            return False
+
+        for tableinfo in tableinfo_list:
+            for nodeinfo in partitionnodeinfo:
+                if tableinfo['nodeid'] == nodeinfo['nodeid']:
+                    tableinfo['partparam1'] = nodeinfo['param1']
+                    tableinfo['partparam2'] = nodeinfo['param2']
+
+    for tableinfo in tableinfo_list:
+        tableinfo['partmtd'] = partitioninfo['method']
+        tableinfo['partcol'] = partitioninfo['column']
+
+    conn_list = None
     if 'partition' in clustercfg and 'method' in clustercfg['partition']:
         partmtd = clustercfg['partition']['method']
         if partmtd == 'notpartition':
@@ -46,25 +73,20 @@ def loadCSV(cataloginfo, numnodes, tablename, partitioninfo, partitionnodeinfo, 
         #     print("\nConnection Info:") # COMMENT OUT
         #     conn.show() # COMMENT OUT
         try:
+            for conn in conn_list:
+                conn.loadData()
             try:
                 for conn in conn_list:
-                    conn.loadData()
-                try:
-                    for conn in conn_list:
-                        conn.commit()
-                        conn.closeConnection()
-                    print("Tables successfully loaded.")
-                except BaseException as e:
-                    print("Error when commiting:")
-                    print(str(e))
+                    conn.commit()
+                print("Tables successfully loaded.")
             except BaseException as e:
-                print("Could not load Data:")
+                print("Error when commiting:")
                 print(str(e))
-                for conn in conn_list:
-                    conn.rollback()
         except BaseException as e:
-            print("Could not establish connection:")
+            print("Could not load Data:")
             print(str(e))
+            for conn in conn_list:
+                conn.rollback()
     else:
         print("Connection list could not be established.")
 
