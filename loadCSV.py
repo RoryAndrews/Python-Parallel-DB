@@ -9,7 +9,10 @@ from lib import catdb
 
 def parseCSV(csvname):
     try:
-    except:
+        print("Filler to get this working. Add functionality.")
+    except BaseException as e:
+        print("No CSV filename provided.")
+        print(str(e))
         csvfile = None
 
     # print("\ncsvfile (unsorted):") # COMMENT OUT
@@ -24,7 +27,8 @@ def loadCSV(cataloginfo, numnodes, tablename, partitioninfo, partitionnodeinfo, 
 
     cparams = catdb.getCatalogParams(cataloginfo)
     tableinfo_list = catdb.queryTables(mysql.connector.connect(**cparams), tablename)
-    print(clustercfg)
+    # print(clustercfg)
+    print ("Suppose to print clustercfg, don't know what clustercfg is.")
     return False
 
     if 'partition' in clustercfg and 'method' in clustercfg['partition']:

@@ -16,16 +16,18 @@ def processSQL(cataloginfo, numnodes, nodeinfo, sqlfilename):
     sql_lexer = MySQLLexer(sql_input)
     sql_stream = CommonTokenStream(sql_lexer)
     sql_parser = MySQLParser(sql_stream)
+    # sql_tree = sql_parser.statement()
     sql_tree = sql_parser.statement()
+
 
     sql_loader = SQLLoader()
     walker = ParseTreeWalker()
     walker.walk(sql_loader, sql_tree)
-    print(sql_loader.getSQL())
+    print(sql_loader.where)
     print (sql_loader.select)
     print (sql_loader.alias)
-
-    print (sql_loader.test)
+    #
+    print (sql_loader.data)
     #print (cataloginfo, numnodes, nodeinfo, sqlfilename)
 
 if __name__ =="__main__":

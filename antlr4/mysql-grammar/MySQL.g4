@@ -1327,7 +1327,7 @@ select_expression:
 	select_list
 
 	(
-		FROM table_references
+		FROM table_references (COMMA table_references)*
 		( partition_clause )?
 		( where_clause )?
 		( groupby_clause )?
@@ -1390,7 +1390,7 @@ table_spec:
 
 displayed_column :
 	  ( table_spec DOT ASTERISK )
-	| ( column_spec (alias)? )
+	| ( column_spec )
 	| ( bit_expr (alias)? )
 ;
 
