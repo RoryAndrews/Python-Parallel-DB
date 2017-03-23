@@ -14,6 +14,7 @@ class SQLLoader(MySQLListener):
         self.where = list()
         self.select = list()
         self.test = None
+        self.data = None         #This will be insert, delete, select
 
     def getSQL(self):
         return self.sql
@@ -77,6 +78,7 @@ class SQLLoader(MySQLListener):
 
     def enterDisplayed_column(self, ctx:MySQLParser.Displayed_columnContext):
         # print(type(ctx.getChild(0)).__name__)
+        # print(ctx.getChild(0).getText())
         self.getSelect(ctx)
 
     def enterTable_references(self, ctx:MySQLParser.Table_referencesContext):
@@ -84,3 +86,20 @@ class SQLLoader(MySQLListener):
 
     def enterWhere_clause(self, ctx:MySQLParser.Where_clauseContext):
         self.where = self.getWhere(ctx)
+
+    def enterData_manipulation_statements(self, ctx:MySQLParser.Data_manipulation_statementsContext):
+        # print(type(ctx.getChild(0)).__name__)
+
+        if type(ctx.getChild(0)).__name__ == "Select_statementContext":
+            self.data = "select"
+        elif type(ctx.getChild(0)).__name__ == "Insert_statementsContext":
+            self.data = "insert"
+        elif type(ctx.getChild(0)).__name__ == "Delete_statementsContext":
+            self.data = "delete"
+        else:
+            self.data = "update"
+
+
+    # def enterStatement(self, ctx:MySQLParser.StatementContext):
+    #     print(type(ctx.getChild(0)).__name__)
+    #     print(ctx.getChild(0).getText())

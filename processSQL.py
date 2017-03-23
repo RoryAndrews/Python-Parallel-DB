@@ -26,8 +26,8 @@ def processSQL(cataloginfo, numnodes, nodeinfo, sqlfilename):
     print(sql_loader.where)
     print (sql_loader.select)
     print (sql_loader.alias)
-    # 
-    # print (sql_loader.test)
+    #
+    print (sql_loader.data)
     #print (cataloginfo, numnodes, nodeinfo, sqlfilename)
 
 if __name__ =="__main__":
