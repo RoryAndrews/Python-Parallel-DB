@@ -2,13 +2,18 @@ import sys
 
 # Antlr4 Library
 from antlr4 import *
-from antlr4.InputStream import InputStream
 
 # Library for parsing cluster.cfg
-from ClusterConfigGrammar.ClusterConfigLexer import ClusterConfigLexer
-from ClusterConfigGrammar.ClusterConfigParser import ClusterConfigParser
-from ClusterConfigGrammar.ClusterConfigListener import ClusterConfigListener
-from ClusterConfigLoader import ClusterConfigLoader
+if __name__ == "__main__":
+    from ClusterConfigGrammar.ClusterConfigLexer import ClusterConfigLexer
+    from ClusterConfigGrammar.ClusterConfigParser import ClusterConfigParser
+    from ClusterConfigGrammar.ClusterConfigListener import ClusterConfigListener
+    from ClusterConfigGrammar.ClusterConfigLoader import ClusterConfigLoader
+else:
+    from lib.ClusterConfigGrammar.ClusterConfigLexer import ClusterConfigLexer
+    from lib.ClusterConfigGrammar.ClusterConfigParser import ClusterConfigParser
+    from lib.ClusterConfigGrammar.ClusterConfigListener import ClusterConfigListener
+    from lib.ClusterConfigGrammar.ClusterConfigLoader import ClusterConfigLoader
 
 def process(clustername):
     clustercfg = getClusterCfg(clustername)

@@ -2,8 +2,12 @@ import sys
 from antlr4 import *
 from antlr4.InputStream import InputStream
 
-from ClusterConfigGrammar.ClusterConfigParser import ClusterConfigParser
-from ClusterConfigGrammar.ClusterConfigListener import ClusterConfigListener
+if __name__ is not None and "." in __name__:
+    from .ClusterConfigParser import ClusterConfigParser
+    from .ClusterConfigListener import ClusterConfigListener
+else:
+    from ClusterConfigParser import ClusterConfigParser
+    from ClusterConfigListener import ClusterConfigListener
 
 class ClusterConfigLoader(ClusterConfigListener):
 

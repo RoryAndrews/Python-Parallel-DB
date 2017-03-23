@@ -152,6 +152,19 @@ def getCatalogParams(cataloginfo):
 def getNodeParams(nodeinfo):
     return getCatalogParams(nodeinfo)
 
+def getRowNodeParams(dtablerow):
+    try:
+        (host, port, database) = parseURL(dtablerow['nodeurl'])
+        return  {
+            'host': host,
+            'port': port,
+            'database': database,
+            'user': dtablerow['nodeuser'],
+            'password': dtablerow['nodepasswd']
+
+        }
+    except:
+        return None
 
 # Grabs the address, port, and database from the hostname url.
 def parseURL(url):
