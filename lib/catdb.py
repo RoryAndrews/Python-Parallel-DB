@@ -17,12 +17,11 @@ def makeDtables(catalogconn):
             "partparam1 char(32), "
             "partparam2 char(32));"
         )
-
         cursor = catalogconn.cursor()
         cursor.execute(dtables)
         catalogconn.commit()
-    except:
-        pass
+    except BaseException as e:
+        print("Error in catdb.makeDtables(): {}".format(str(e)))
     finally:
         cursor.close()
         catalogconn.close()

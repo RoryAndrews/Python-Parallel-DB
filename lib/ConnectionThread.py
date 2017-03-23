@@ -1,7 +1,11 @@
 import threading
 import mysql.connector.pooling
-import catdb
 import re
+
+if __name__ == "__main__":
+    import catdb
+else:
+    from lib import catdb
 
 # Allows multithreading when creating a connection to database and executing an SQL statement.
 # threadID: a number representing this unique thread.
@@ -26,6 +30,7 @@ class ConnectionThread (threading.Thread):
         self.dtablerow = dtablerow
 
     def run(self):
+        success = False
         try:
             cursor = self.nodeconn.cursor()
             self.nodeconn.start_transaction()
@@ -35,6 +40,7 @@ class ConnectionThread (threading.Thread):
                 result = catdb.insertTable(self.catalogconn, self.dtablerow) # Updates dtables
                 if result:
                     self.nodeconn.commit()
+                    success = True
                 else:
                     print("Rolling back transaction for thread {}".format(self.threadID))
                     self.nodeconn.rollback()
@@ -43,19 +49,45 @@ class ConnectionThread (threading.Thread):
                 result = catdb.removeByTable(self.catalogconn, self.dtablerow) # Updates dtables
                 if result:
                     self.nodeconn.commit()
+                    success = True
                 else:
                     print("Rolling back transaction for thread {}".format(self.threadID))
                     self.nodeconn.rollback()
             else:
                 cursor.execute(self.sqlstatement)
                 self.nodeconn.commit()
-            print("[{}:{}/{}]: {} success".format(self.nodeconn.server_host, self.nodeconn.server_port, self.nodeconn.database, self.sqlstatement_name))
+                success = True
         except mysql.connector.Error as err:
-            print("[{}:{}/{}]: {} failure".format(self.nodeconn.host, self.nodeconn.port, self.nodeconn.database, self.sqlstatement_name))
-            print("SQL ERROR: {}".format(err.msg))
+                print("SQL ERROR: {}".format(err.msg))
         finally:
+            if success:
+                self.__printSuccess()
+            else:
+                self.__printFailure()
             cursor.close()
             self.nodeconn.close()
+
+    def __printSuccess(self):
+        if not self.sqlstatement_name:
+            self.sqlstatement_name = 'sql'
+        try:
+            print("[{}:{}/{}]: {} success".format(self.nodeconn.server_host, self.nodeconn.server_port, self.nodeconn.database, self.sqlstatement_name))
+        except:
+            try:
+                print("[{}]: {} success".format(self.dtablerow['nodeurl'], self.sqlstatement_name))
+            except:
+                print("THREAD {}: success".format(self.threadID))
+
+    def __printFailure(self):
+        if not self.sqlstatement_name:
+            self.sqlstatement_name = 'sql'
+        try:
+            print("[{}:{}/{}]: {} failure".format(self.nodeconn.server_host, self.nodeconn.server_port, self.nodeconn.database, self.sqlstatement_name))
+        except AttributeError:
+            try:
+                print("[{}]: {} failure".format(self.dtablerow['nodeurl'], self.sqlstatement_name))
+            except:
+                print("THREAD {}: failure".format(self.threadID))
 
 
 if __name__ == "__main__":

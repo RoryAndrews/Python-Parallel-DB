@@ -2,7 +2,7 @@ import mysql.connector
 import re
 
 class ConnectionLoader(object):
-    def __init__(self, nodeconn, catalogconn, tableinfo, data):
+    def __init__(self, catalogconn, nodeconn, tableinfo, data):
         self.nodeconn = nodeconn
         self.catalogconn = catalogconn
         self.tableinfo = tableinfo
