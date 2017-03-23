@@ -1,3 +1,2 @@
 SELECT S.face, B.ID, S.nose
-FROM ORDERS S, Books B
-;
+FROM ORDERS S, Books B;
