@@ -1,0 +1,4 @@
+RECORD: ADDED TABLE Books TO NODE1
+RECORD: ADDED TABLE Books TO NODE2
+SUCCESS: THREAD1 (database=jesusrory1,hostname=127.0.0.1): Sucessfully executed DDL
+SUCCESS: THREAD2 (database=jesusrory2,hostname=127.0.0.1): Sucessfully executed DDL
