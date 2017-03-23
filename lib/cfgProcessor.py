@@ -8,7 +8,7 @@ from antlr4.InputStream import InputStream
 from ClusterConfigGrammar.ClusterConfigLexer import ClusterConfigLexer
 from ClusterConfigGrammar.ClusterConfigParser import ClusterConfigParser
 from ClusterConfigGrammar.ClusterConfigListener import ClusterConfigListener
-from ClusterConfigLoader import ClusterConfigLoader
+from lib.ClusterConfigLoader import ClusterConfigLoader
 
 def process(clustername):
     clustercfg = getClusterCfg(clustername)

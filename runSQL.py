@@ -1,5 +1,6 @@
 from lib.cfgProcessor import *
 # from csvLoader import csvLoader
+from loadCSV import *
 import sys
 
 if __name__ =="__main__":
@@ -12,7 +13,9 @@ if __name__ =="__main__":
     else:
         filename = None
 
-    (cataloginfo, numnodes, nodeinfo, tablename, partitioninfo, partitionnodeinfo) = cfgProcessor.processCfg(clustername)
+    # (cataloginfo, numnodes, nodeinfo, tablename, partitioninfo, partitionnodeinfo) = cfgProcessor.processCfg(clustername)
+    (cataloginfo, numnodes, nodeinfo, tablename, partitioninfo, partitionnodeinfo) = process(clustername)
+
     # PROCESSING CLUSTERCFG
     # [cataloginfo]
     # Mandatory
@@ -41,7 +44,8 @@ if __name__ =="__main__":
 
     if cataloginfo:
         if tablename:
-            loadCSV.loadCSV(
+            # loadCSV.loadCSV(
+            loadCSV(
                 cataloginfo=cataloginfo, numnodes=numnodes, tablename=tablename,
                 partitioninfo=partitioninfo, partitionnodeinfo=partitionnodeinfo,
                 csvfilename=filename
