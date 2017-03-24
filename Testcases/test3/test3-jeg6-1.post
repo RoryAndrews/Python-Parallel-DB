@@ -1,0 +1,3 @@
+mysql -u root -pXXXXXX jesusrory1 < test3-jeg6-1.post.1.sql
+mysql -u root -pXXXXXX jesusrory2 < test3-jeg6-1.post.1.sql
+mysql -u root -pXXXXXX jesusrorycatalog < test3-jeg6-1.post.2.sql
