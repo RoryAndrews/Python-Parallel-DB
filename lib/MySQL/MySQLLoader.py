@@ -33,8 +33,8 @@ class MySQLLoader(MySQLListener):
             if isinstance(child, MySQLParser.Column_nameContext):
                 column = child.getText()
 
-        if table and column:
-            self.columns.append((table, column))
+
+        self.columns.append((table, column))
 
     # Exit a parse tree produced by MySQLParser#table_factor.
     def exitTable_factor(self, ctx:MySQLParser.Table_factorContext):
@@ -48,7 +48,7 @@ class MySQLLoader(MySQLListener):
                 alias = child.getText()
 
         if tablename:
-            self.aliases[alias] = tablename
+            self.aliases[tablename] = alias
 
     def enterData_manipulation_statements(self, ctx:MySQLParser.Data_manipulation_statementsContext):
         # print(type(ctx.getChild(0)).__name__)

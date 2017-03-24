@@ -31,6 +31,7 @@ class ConnectionThread (threading.Thread):
 
     def run(self):
         success = False
+        prevent_success_msg = False
         try:
             cursor = self.nodeconn.cursor()
             self.nodeconn.start_transaction()
@@ -53,16 +54,19 @@ class ConnectionThread (threading.Thread):
                 else:
                     print("Rolling back transaction for thread {}".format(self.threadID))
                     self.nodeconn.rollback()
-            else:
+            elif re.search("SELECT ", self.sqlstatement, flags=re.IGNORECASE | re.MULTILINE):
                 cursor.execute(self.sqlstatement)
-                self.nodeconn.commit()
+                rows = cursor.fetchall(size=self.fetchsize)
+                print(rows)
+
                 success = True
+                prevent_success_msg = True
         except mysql.connector.Error as err:
                 print("SQL ERROR: {}".format(err.msg))
         finally:
-            if success:
+            if success and not prevent_success_msg:
                 self.__printSuccess()
-            else:
+            elif not success:
                 self.__printFailure()
             cursor.close()
             self.nodeconn.close()
