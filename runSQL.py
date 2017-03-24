@@ -1,7 +1,36 @@
-from lib.cfgProcessor import *
-# from csvLoader import csvLoader
-from loadCSV import *
 import sys
+
+from processSQL import *
+from lib import cfgProcessor
+from loadCSV import *
+from runDDL import *
+
+
+def runSQL(cataloginfo, numnodes, nodeinfo, sqlfilename):
+    # First try to read file.
+    try:
+        sqlfile = open(sqlfilename)
+        sqlstatement = sqlfile.read()
+    except:
+        print("runSQL: Could not read file.")
+        return False
+    # Check if create table or drop table and use runDDL if true.
+    try:
+        if re.search("CREATE TABLE", sqlstatement, flags=re.IGNORECASE | re.MULTILINE) or re.search("DROP TABLE", sqlstatement, flags=re.IGNORECASE | re.MULTILINE):
+            return runDDL(cataloginfo, numnodes, nodeinfo, sqlfilename)
+        else:
+            (sqltype, alias, column_list) = processSQL(sqlfilename)
+    except:
+        print("Error in runSQL: Could not parse sql statement.")
+        return False
+
+    if sqltype == 'select':
+        print("Inside select.")
+    else:
+        print("runSQL: Only CREATE TABLE, DROP TABLE, and SELECT statements are allowed.")
+
+
+
 
 if __name__ =="__main__":
     if len(sys.argv) > 1:
@@ -14,7 +43,7 @@ if __name__ =="__main__":
         filename = None
 
     # (cataloginfo, numnodes, nodeinfo, tablename, partitioninfo, partitionnodeinfo) = cfgProcessor.processCfg(clustername)
-    (cataloginfo, numnodes, nodeinfo, tablename, partitioninfo, partitionnodeinfo) = process(clustername)
+    (cataloginfo, numnodes, nodeinfo, tablename, partitioninfo, partitionnodeinfo) = cfgProcessor.process(clustername)
 
     # PROCESSING CLUSTERCFG
     # [cataloginfo]
@@ -44,13 +73,12 @@ if __name__ =="__main__":
 
     if cataloginfo:
         if tablename:
-            # loadCSV.loadCSV(
             loadCSV(
                 cataloginfo=cataloginfo, numnodes=numnodes, tablename=tablename,
                 partitioninfo=partitioninfo, partitionnodeinfo=partitionnodeinfo,
                 csvfilename=filename
             )
         else:
-            processSQL(cataloginfo=cataloginfo, numnodes=numnodes, nodeinfo=nodeinfo, sqlfilename=filename)
+            runSQL(cataloginfo=cataloginfo, numnodes=numnodes, nodeinfo=nodeinfo, sqlfilename=filename)
     else:
         print("ERROR: Cluster configuration file could not be used.")

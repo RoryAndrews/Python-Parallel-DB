@@ -44,7 +44,7 @@ class ConnectionThread (threading.Thread):
                 else:
                     print("Rolling back transaction for thread {}".format(self.threadID))
                     self.nodeconn.rollback()
-            elif re.search("DROP TABLE", self.sqlstatement, flags=re.IGNORECASE | re.MULTILINE) and self.dtablerow:
+            elif re.search("DROP TABLE", self.sqlstatement, flags=re.IGNORECASE | re.MULTILINE):
                 cursor.execute(self.sqlstatement)
                 result = catdb.removeByTable(self.catalogconn, self.dtablerow) # Updates dtables
                 if result:
