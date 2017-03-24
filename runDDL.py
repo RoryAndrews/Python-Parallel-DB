@@ -64,7 +64,7 @@ if __name__ == "__main__":
 
     (cataloginfo, numnodes, nodeinfo, tablename, partitioninfo, partitionnodeinfo) = cfgProcessor.process(clustername)
 
-    cparams = catdb.getCatalogParams(cataloginfo)
+    # cparams = catdb.getCatalogParams(cataloginfo)
     # conn = mysql.connector.connect(**cparams)
     # cursor = conn.cursor()
     # cursor.execute("DROP DATABASE jesusrorycatalog;")
