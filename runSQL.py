@@ -22,7 +22,7 @@ def runSQL(cataloginfo, numnodes, nodeinfo, sqlfilename):
             (sqltype, alias, column_list) = processSQL(sqlfilename)
     except:
         print("Error in runSQL: Could not parse sql statement.")
-        return False
+
 
     if sqltype == 'select':
         print("Inside select.")
@@ -36,22 +36,21 @@ if __name__ =="__main__":
     if len(sys.argv) > 1:
         clustername = sys.argv[1]
     else:
-        clustername = 'cluster.cfg'
+        print("Not enough arguements given.")
+        quit()
     if len(sys.argv) > 2:
         filename = sys.argv[2]
         filetype = filename.split(".")
     else:
-        filename = None
+        print("Not enough arguements given.")
+        quit()
 
-    # (cataloginfo, numnodes, nodeinfo, tablename, partitioninfo, partitionnodeinfo) = cfgProcessor.processCfg(clustername)
     (cataloginfo, numnodes, nodeinfo, tablename, partitioninfo, partitionnodeinfo) = cfgProcessor.process(clustername)
 
     if filetype[1] == "ddl":
         (cataloginfo, numnodes, nodeinfo, tablename, partitioninfo, partitionnodeinfo) = cfgProcessor.process(clustername)
-        cparams = catdb.getCatalogParams(cataloginfo)
         runDDL(cataloginfo, numnodes, nodeinfo, filename)
-
-    if cataloginfo:
+    elif cataloginfo:
         if tablename:
             loadCSV(
                 cataloginfo=cataloginfo, numnodes=numnodes, tablename=tablename,
