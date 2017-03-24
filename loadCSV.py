@@ -7,18 +7,17 @@ import mysql.connector.pooling
 
 from lib.ConnectionLoader import ConnectionLoader
 from lib import catdb
+from lib import cfgProcessor
 
 def parseCSV(csvname):
     csvfile = list()
-    with open(csvname) as csvfile:
-        readCSV = csv.reader(csvfile, delimiter=',')
-        for row in readCSV:
-            print(row)
-
     try:
-        print("Filler to get this working. Add functionality.")
+        csvreader = open(csvname)
+        readCSV = csv.reader(csvreader, delimiter=',')
+        for row in readCSV:
+            csvfile.append(tuple(row))
     except BaseException as e:
-        print("No CSV filename provided.")
+        print("Could not parse csv file.")
         print(str(e))
         csvfile = None
 
@@ -30,7 +29,9 @@ def parseCSV(csvname):
 
 def loadCSV(cataloginfo, numnodes, tablename, partitioninfo, partitionnodeinfo, csvfilename):
     # Get partition method and get list of connectionLoaders
-    if not cataloginfo or not tablename or not partitioninfo or not csvfilename:
+    csvfile = parseCSV(csvfilename)
+
+    if not cataloginfo or not tablename or not partitioninfo or not csvfile:
         print("loadCSV was not given the needed information to load the csv.")
         return False
 
@@ -41,6 +42,14 @@ def loadCSV(cataloginfo, numnodes, tablename, partitioninfo, partitionnodeinfo, 
 
     tableinfo_list = catdb.queryTables(mysql.connector.connect(**cparams), tablename)
 
+    if not tableinfo_list:
+        print("Error in loadCSV: No tables found in the catalog with the given name '{}'.".format(tablename))
+        return False
+
+    if numnodes and len(tableinfo_list) != numnodes:
+        print("Error in loadCSV: Catalog contains more nodes than specified in the cluster config.")
+        return False
+
 
     if partitionnodeinfo:
         if len(tableinfo_list) != len(partitionnodeinfo) or len(tableinfo_list) != numnodes:
@@ -48,24 +57,36 @@ def loadCSV(cataloginfo, numnodes, tablename, partitioninfo, partitionnodeinfo, 
             return False
 
         for tableinfo in tableinfo_list:
-            for nodeinfo in partitionnodeinfo:
-                if tableinfo['nodeid'] == nodeinfo['nodeid']:
-                    tableinfo['partparam1'] = nodeinfo['param1']
-                    tableinfo['partparam2'] = nodeinfo['param2']
+            for pnodeinfo in partitionnodeinfo:
+                if tableinfo['nodeid'] == pnodeinfo['nodeid']:
+                    tableinfo['partparam1'] = pnodeinfo['param1']
+                    tableinfo['partparam2'] = pnodeinfo['param2']
 
     for tableinfo in tableinfo_list:
-        tableinfo['partmtd'] = partitioninfo['method']
-        tableinfo['partcol'] = partitioninfo['column']
+        if partitioninfo['method'] == 'notpartition':
+            tableinfo['partmtd'] = 0
+        elif partitioninfo['method'] == 'range':
+            tableinfo['partmtd'] = 1
+        elif partitioninfo['method'] == 'hash':
+            tableinfo['partmtd'] = 2
+        else:
+            print("Error in loadCSV: partition method give not one of the cases of 'notpartition', 'range', or 'hash'.")
+            return False
+        try:
+            tableinfo['partcol'] = partitioninfo['column'] # Not needed if method is notpartition
+        except:
+            pass
 
+    cat_cnxpool = mysql.connector.pooling.MySQLConnectionPool(pool_name = "cat_cnxpool", pool_size = len(tableinfo_list), **cparams)
     conn_list = None
-    if 'partition' in clustercfg and 'method' in clustercfg['partition']:
-        partmtd = clustercfg['partition']['method']
-        if partmtd == 'notpartition':
-            conn_list = noPartitioning(clustercfg, csvfile)
-        elif partmtd == 'range':
-            conn_list = rangePartitioning(clustercfg, csvfile)
-        elif partmtd == 'hash':
-            conn_list = hashPartitioning(clustercfg, csvfile)
+
+    partmtd = partitioninfo['method']
+    if partmtd == 'notpartition':
+        conn_list = noPartitioning(cat_cnxpool, tableinfo_list, csvfile)
+    elif partmtd == 'range':
+        conn_list = rangePartitioning(cat_cnxpool, tableinfo_list, csvfile)
+    elif partmtd == 'hash':
+        conn_list = hashPartitioning(cat_cnxpool, tableinfo_list, csvfile)
 
     if conn_list:
         # print("\nGot conn_list:") # COMMENT OUT
@@ -78,12 +99,12 @@ def loadCSV(cataloginfo, numnodes, tablename, partitioninfo, partitionnodeinfo, 
             try:
                 for conn in conn_list:
                     conn.commit()
-                print("Tables successfully loaded.")
+                print("loadCSV: Tables successfully loaded.")
             except BaseException as e:
-                print("Error when commiting:")
+                print("Error in loadCSV when commiting:")
                 print(str(e))
         except BaseException as e:
-            print("Could not load Data:")
+            print("Error in load CSV: Could not load Data:")
             print(str(e))
             for conn in conn_list:
                 conn.rollback()
@@ -91,26 +112,28 @@ def loadCSV(cataloginfo, numnodes, tablename, partitioninfo, partitionnodeinfo, 
         print("Connection list could not be established.")
 
 # No partitioning method so insert everything into all tables
-def noPartitioning(clustercfg, csvfile):
+def noPartitioning(cat_cnxpool, tableinfo_list, csvfile):
     conn_list = list()
-    catcnxpool =  mysql.connector.pooling.MySQLConnectionPool(pool_name = "catcnxpool", pool_size = 3, **cparams)
-    tables = catdb.queryTables(mysql.connector.connect(**cparams), )
-    for (i, node) in enumerate(nodes):
-        if str(node['nodeid']) in clustercfg: # Weeding out extra nodes not in clustercfg
-            conn_list.insert(-1, connectionLoader(node, csvfile, clustercfg) )
+    for tableinfo in tableinfo_list:
+        catconn = cat_cnxpool.get_connection()
+        nodeparams = catdb.getRowNodeParams(tableinfo)
+        nodeconn = mysql.connector.connect(**nodeparams)
+
+        conn_list.insert(-1, ConnectionLoader(catconn, nodeconn, tableinfo, csvfile) )
 
     return conn_list
 
 # Range partitioning
-def rangePartitioning(clustercfg, csvfile):
+def rangePartitioning(cat_cnxpool, tableinfo_list, csvfile):
     conn_list = list() # For storing connections.
-    nodes = getNodeInfo(clustercfg) # For connecting to nodes.
-    columns = getColumns(nodes[0]) # For figuring out which column number to range by.
-    colnum = None
+    columns = getColumns(tableinfo_list[0]) # For figuring out which column number to range by.
+    if not columns:
+        return None
 
+    colnum = None
     # Get column number for sorting
     for (i, column) in enumerate(columns):
-        if column == clustercfg['partition']['column']:
+        if column == tableinfo_list[0]['partcol']:
             colnum = i
 
     # sort csvfile
@@ -121,25 +144,28 @@ def rangePartitioning(clustercfg, csvfile):
     # print("\nCOLUMNS (where column '{}' is in position {}):\n{}".format(clustercfg['partition']['column'], colnum, columns)) # COMMENT OUT
 
 
-    for (i, node) in enumerate(nodes):
-        if str(node['nodeid']) in clustercfg:
-            # Get data in range
-            # print("\nnode{}".format(node['nodeid'])) # COMMENT OUT
-            # print("Range: {} to {}".format(clustercfg[str(node['nodeid'])]['param1'], clustercfg[str(node['nodeid'])]['param2'])) # COMMENT OUT
-            if float(clustercfg[str(node['nodeid'])]['param1']) < float(clustercfg[str(node['nodeid'])]['param2']):
-                (startrow, endrow) = getRangeSlice(
-                                        clustercfg[str(node['nodeid'])]['param1'],
-                                        clustercfg[str(node['nodeid'])]['param2'],
-                                        colnum, csvfile
-                                    )
-            else:
-                (startrow, endrow) = (None, None)
-            # print("Result ({}:{}) out of (0:{}):".format(startrow, endrow, len(csvfile))) # COMMENT OUT
-            # for row in csvfile[startrow:endrow]: print(row) # COMMENT OUT
-            if startrow is not None and endrow is not None:
-                conn_list.insert(-1, connectionLoader(node, csvfile[startrow:endrow], clustercfg) )
-            else:
-                return None
+    for tableinfo in tableinfo_list:
+        # Get data in range
+        # print("\nnode{}".format(node['nodeid'])) # COMMENT OUT
+        # print("Range: {} to {}".format(clustercfg[str(node['nodeid'])]['param1'], clustercfg[str(node['nodeid'])]['param2'])) # COMMENT OUT
+        if float(tableinfo['partparam1']) < float(tableinfo['partparam2']):
+            (startrow, endrow) = getRangeSlice(
+                                    float(tableinfo['partparam1']),
+                                    float(tableinfo['partparam2']),
+                                    colnum, csvfile
+                                )
+        else:
+            (startrow, endrow) = (None, None)
+        # print("Result ({}:{}) out of (0:{}):".format(startrow, endrow, len(csvfile))) # COMMENT OUT
+        # for row in csvfile[startrow:endrow]: print(row) # COMMENT OUT
+        if startrow is not None and endrow is not None:
+            catconn = cat_cnxpool.get_connection()
+            nodeparams = catdb.getRowNodeParams(tableinfo)
+            nodeconn = mysql.connector.connect(**nodeparams)
+
+            conn_list.insert(-1, ConnectionLoader(catconn, nodeconn, tableinfo, csvfile[startrow:endrow]) )
+        else:
+            return None
 
     return conn_list
 
@@ -180,66 +206,52 @@ def getRangeSlice(low, high, colnum, csvfile):
         return (None, None)
 
 # Hash partitioning
-def hashPartitioning(clustercfg, csvfile):
+def hashPartitioning(cat_cnxpool, tableinfo_list, csvfile):
     conn_list = list()
-    nodes = getNodeInfo(clustercfg)
-    candidates, colNumber = catalogCompliance(clustercfg,nodes)
-    partparam1 = len(candidates)
 
-    for x in range(partparam1):
-        thisPart = candidates[x]['nodeid']
-        print(thisPart)
-        templist = list()
-        for (i,row) in enumerate(csvfile):
-            part = ((int(row[colNumber]) % int(partparam1)) +1)
-            if thisPart == part:
-                templist.insert(-1, row)
-        conn_list.insert(-1, connectionLoader(candidates[x], templist, clustercfg) )
+    columns = getColumns(tableinfo_list[0]) # For figuring out which column number to range by.
+    if not columns:
+        return None
+
+    colnum = None
+    # Get column number for sorting
+    for (i, column) in enumerate(columns):
+        if column == tableinfo_list[0]['partcol']:
+            colnum = i
+
+    partparam1 = len(tableinfo_list)
+
+    for tableinfo in tableinfo_list:
+        catconn = cat_cnxpool.get_connection()
+        nodeparams = catdb.getRowNodeParams(tableinfo)
+        nodeconn = mysql.connector.connect(**nodeparams)
+
+        hashedcsv = list()
+        for row in csvfile:
+            hashvalue = ((int(row[colnum]) % partparam1) +1)
+            if tableinfo['nodeid'] == hashvalue:
+                hashedcsv.insert(-1, row)
+
+        conn_list.insert(-1, ConnectionLoader(catconn, nodeconn, tableinfo, hashedcsv))
 
     return conn_list
 
-def getColumns(node):
+def getColumns(tableinfo):
     try:
-        user = node['nodeuser']
-        passwd = node['nodepasswd']
-        (host, port, database) = parseURL(node['nodeurl'])
-        conn_params = {
-            'user': user,
-            'passwd': passwd,
-            'host': host,
-            'port': port,
-            'database': database
-        }
+        conn_params = catdb.getRowNodeParams(tableinfo)
         connection = mysql.connector.connect(**conn_params)
         cursor = connection.cursor()
-        cursor.execute("SELECT * FROM {};".format(node['tname']))
+        cursor.execute("SELECT * FROM {};".format(tableinfo['tname']))
         column_names = [i[0] for i in cursor.description]
         return column_names
     except BaseException as e:
         print(cursor.statement)
-        print("Could not get columns in getColumns()")
+        print("Could not get columns in loadCSV.getColumns()")
         print(str(e))
         print("Arg:")
         print(node)
         return None
 
-# A check to see that the partition column requested exists in the table, and that the nodes are partitioned for the same type
-def catalogCompliance(clustercfg, nodes):
-        candidates = list()
-        partCol = getColumns(nodes[0])
-        colNumber = None
-        #Checks every col against the potential range column
-        for col in range(len(partCol)):
-            if clustercfg['partition']['column'] == partCol[int(col)]:
-                colNumber = int(col)
-                # Checks candidate nodes for correct partition
-                for (i, node) in enumerate(nodes):
-                    # if 2 == nodes[i]['partmtd']:
-                    candidates.insert(0,nodes[i])
-                return candidates , colNumber
-
-        print("The available columns for this table are: {0}. \n {1} is not a column in this table.".format(partCol,clustercfg['partition']['column']))
-        return candidates , colNumber
 
 if __name__ == '__main__':
     if len(sys.argv) > 1:
@@ -247,9 +259,10 @@ if __name__ == '__main__':
     else:
         clustername = 'cluster.cfg'
     if len(sys.argv) > 2:
-        csvname = sys.argv[2]
+        csvfilename = sys.argv[2]
     else:
-        csvname = 'data.csv'
+        csvfilename = 'data.csv'
 
-    (clustercfg, csvfile) = parse(clustername, csvname)
-    load(clustercfg, csvfile)
+    (cataloginfo, numnodes, nodeinfo, tablename, partitioninfo, partitionnodeinfo) = cfgProcessor.process(clustername)
+
+    loadCSV(cataloginfo, numnodes, tablename, partitioninfo, partitionnodeinfo, csvfilename)

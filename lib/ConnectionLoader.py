@@ -1,6 +1,11 @@
 import mysql.connector
 import re
 
+if __name__ == "__main__":
+    import catdb
+else:
+    from lib import catdb
+
 class ConnectionLoader(object):
     def __init__(self, catalogconn, nodeconn, tableinfo, data):
         self.nodeconn = nodeconn
@@ -12,10 +17,10 @@ class ConnectionLoader(object):
         try:
             self.nodeconn.start_transaction()
             cursor = self.nodeconn.cursor(buffered=True)
-
+            
             # Get column names
             cursor.execute("SELECT * FROM {};".format(self.tableinfo['tname']))
-            fieldnames = [i[0] for i in self.cursor.description]
+            fieldnames = [i[0] for i in cursor.description]
 
             # Generate insert statement
             insert_statement = "INSERT INTO {} (".format(self.tableinfo['tname'])
@@ -33,10 +38,10 @@ class ConnectionLoader(object):
 
             cursor.executemany(insert_statement, self.data)
         except mysql.connector.Error as err:
-            print("ERROR: Loading with node{}:\ntableinfo: {}\n".format(self.tableinfo['nodeid'], self.tableinfo))
+            print("ERROR: Loading with node{}:\ntableinfo: {}".format(self.tableinfo['nodeid'], self.tableinfo))
             print(err)
         except BaseException as e:
-            print("Failed to load data with node{}:\ntableinfo: {}\n".format(self.tableinfo['nodeid'], self.tableinfo))
+            print("Failed to load data with node{}:\ntableinfo: {}".format(self.tableinfo['nodeid'], self.tableinfo))
             print(str(e))
         finally:
             cursor.close()
@@ -45,15 +50,15 @@ class ConnectionLoader(object):
         if self.nodeconn:
             self.nodeconn.commit()
             self.nodeconn.close()
-            result = catdb.partitionUpdate(self.catalogconn, tableinfo)
+            result = catdb.partitionUpdate(self.catalogconn, self.tableinfo)
             if not result:
-                print("Error updating catalog.\ntableinfo: {}".format(tableinfo))
+                print("Error updating catalog.\ntableinfo: {}".format(self.tableinfo))
         else:
-            print("Commit Error: No connection remaining.\ntableinfo: {}".format(tableinfo))
+            print("Commit Error: No connection remaining.\ntableinfo: {}".format(self.tableinfo))
 
     def rollback(self):
         if self.nodeconn:
             self.nodeconn.rollback()
             self.nodeconn.close()
         else:
-            print("Rollback Error: No connection remaining.\ntableinfo: {}".format(tableinfo))
+            print("Rollback Error: No connection remaining.\ntableinfo: {}".format(self.tableinfo))

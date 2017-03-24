@@ -84,7 +84,7 @@ def processCfg(clustercfg):
     # Dictionary containing keys: method, column (not required when method=notpartition), param1 (if method=hash)
     partitioninfo = None
     if 'partitioninfo' in clustercfg:
-        keys_needed = set(['method', 'column'])
+        keys_needed = set(['method'])
         keys = set(clustercfg['partitioninfo'].keys())
         if not keys_needed.issubset(keys): # if keys_needed is not in keys then not enough keys were provided.
             print("Cluster Config Error: partition_info (defined by lines like: partition.key=value) does not contain all the necessary keys.")
