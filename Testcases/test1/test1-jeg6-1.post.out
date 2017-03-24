@@ -1,3 +1,0 @@
-com.ibm.db2.jcc.DB2Driver	jdbc:db2://127.0.0.1:3306/jesusrory1	dbuser
-com.ibm.db2.jcc.DB2Driver	jdbc:db2://127.0.0.1:3306/jesusrory2	dbuser
-nodedriver	nodeurl	nodeuser
