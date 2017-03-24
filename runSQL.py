@@ -11,6 +11,7 @@ def runSQL(cataloginfo, numnodes, nodeinfo, sqlfilename):
     try:
         sqlfile = open(sqlfilename)
         sqlstatement = sqlfile.read()
+        sqlfile.close()
     except:
         print("runSQL: Could not read file.")
         return False
@@ -18,14 +19,14 @@ def runSQL(cataloginfo, numnodes, nodeinfo, sqlfilename):
     try:
         if re.search("CREATE TABLE", sqlstatement, flags=re.IGNORECASE | re.MULTILINE) or re.search("DROP TABLE", sqlstatement, flags=re.IGNORECASE | re.MULTILINE):
             return runDDL(cataloginfo, numnodes, nodeinfo, sqlfilename)
-        else:
-            (sqltype, alias, column_list) = processSQL(sqlfilename)
-    except:
+
+    except BaseException as e:
+        print(str(e))
         print("Error in runSQL: Could not parse sql statement.")
 
-
+    (sqltype, aliases, columns, comparisons) = processSQL(sqlfilename)
     if sqltype == 'select':
-        print("Inside select.")
+        pass
     else:
         print("runSQL: Only CREATE TABLE, DROP TABLE, and SELECT statements are allowed.")
 
@@ -46,11 +47,14 @@ if __name__ =="__main__":
         quit()
 
     (cataloginfo, numnodes, nodeinfo, tablename, partitioninfo, partitionnodeinfo) = cfgProcessor.process(clustername)
-
-    if filetype[1] == "ddl":
-        (cataloginfo, numnodes, nodeinfo, tablename, partitioninfo, partitionnodeinfo) = cfgProcessor.process(clustername)
-        runDDL(cataloginfo, numnodes, nodeinfo, filename)
-    elif cataloginfo:
+    try:
+        if filetype[1] == "ddl":
+            (cataloginfo, numnodes, nodeinfo, tablename, partitioninfo, partitionnodeinfo) = cfgProcessor.process(clustername)
+            runDDL(cataloginfo, numnodes, nodeinfo, filename)
+            quit()
+    except:
+        pass
+    if cataloginfo:
         if tablename:
             loadCSV(
                 cataloginfo=cataloginfo, numnodes=numnodes, tablename=tablename,

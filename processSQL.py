@@ -9,36 +9,26 @@ from lib import ConnectionLoader
 from lib.MySQL.MySQLLexer import MySQLLexer
 from lib.MySQL.MySQLListener import MySQLListener
 from lib.MySQL.MySQLParser import MySQLParser
-from lib.SQLLoader import SQLLoader
+from lib.MySQL.MySQLLoader import MySQLLoader
 
 def processSQL(sqlfilename):
-    # try:
-        #Use antlr4 to parse sqlfile
+    try:
+        # Use antlr4 to parse sqlfile
         sql_input = FileStream(sqlfilename)
         sql_lexer = MySQLLexer(sql_input)
-        sql_lexer.removeErrorListener(ConsoleErrorListener)
+        sql_lexer.removeErrorListeners()
         sql_stream = CommonTokenStream(sql_lexer)
         sql_parser = MySQLParser(sql_stream)
-        # sql_tree = sql_parser.statement()
         sql_tree = sql_parser.statement()
 
-
-        sql_loader = SQLLoader()
+        sql_loader = MySQLLoader()
         walker = ParseTreeWalker()
         walker.walk(sql_loader, sql_tree)
 
-        column_list = set()
-        for item in sql_loader.select:
-            column_list.add(item)
-
-        for item in sql_loader.where:
-            m = re.search('^([\w\d]+).([\w\d])+$', item[0])
-            (table, column) = m.group(1, 2)
-            column_list.add((table, column))
-
-        return (sql_loader.data, sql_loader.alias, column_list)
-    # except:
-    #     return (None, None, None)
+        return (sql_loader.sqltype, sql_loader.aliases, sql_loader.columns, sql_loader.comparisons)
+    except BaseException as e:
+        print(str(e))
+        return (None, None, None, None)
 
 if __name__ =="__main__":
     catalog = {
@@ -60,4 +50,4 @@ if __name__ =="__main__":
 
     sqlfilename = "process_sqlfile"
 
-    processSQL(sqlfilename)
+    print(processSQL(sqlfilename))
