@@ -137,7 +137,7 @@ def rangePartitioning(cat_cnxpool, tableinfo_list, csvfile):
             colnum = i
 
     # sort csvfile
-    csvfile = sorted(csvfile, key=lambda x: int(x[colnum]))
+    csvfile = sorted(csvfile, key=lambda x: float(x[colnum]))
 
     # print("\ncsvfile (sorted):") # COMMENT OUT
     # for row in csvfile: print(row) # COMMENT OUT
