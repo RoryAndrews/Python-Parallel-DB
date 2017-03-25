@@ -46,24 +46,98 @@ def joinQuery(cataloginfo, aliases, columns, sqlstatement, sqlfilename):
         print("runSQL: Can't perform a join with one Table.")
         return False
 
+    tableM = aliases[0][0]
+    tableN = aliases[1][0]
+    conn = mysql.connector.connect(**cparams)
+    tableinfoM = catdb.queryTables(conn, tableM)
+    conn = mysql.connector.connect(**cparams)
+    tableinfoN = catdb.queryTables(conn, tableN)
+
+    plan = getQueryPlan(tableM, tableN, tableinfoM, tableinfoN)
+
+    if not plan:
+        print("runSQL: Failed to generate plan.")
+        return False
+
     partitionedsql = getPartitionedQuery(sqlstatement, aliases, columns)
+
+
+    # threadlist = list()
+    # for (i,step) in enumerate(plan):
+    #     m = step[0][0]
+    #     n = step[0][1]
+    #     transferdirection = step[1]
+    #     threadlist.append(PartitionJoinThread(threadID=i, tableM=tableM, tableinfoM=tableinfoM[m], tableN=tableN, tableinfoN=tableinfoN[n], columns=columns, partitionedsql=partitionedsql, sqlfilename=sqlfilename))
+    # print(partitionedsql)
+
+
 
 # Returns string where
 def getPartitionedQuery(sqlstatement, aliases, columns):
-    aliaslist = list()
-    for key, value in aliases.items():
-        if not value:
-            aliaslist.append(key)
+    regexstring = "([\s\W])({})([\s\W])"
+    for (i, (table, alias)) in enumerate(aliases):
+        if not alias:
+            # Replace tablename with a format variable containing index number
+            sqlstatement = re.sub(regexstring.format(table), replaceWithAlias, sqlstatement, flags=re.IGNORECASE | re.MULTILINE)
+            sqlstatement = re.sub("{{{}}}".format(table), "{{{}}}".format(i), sqlstatement, flags=re.IGNORECASE | re.MULTILINE)
         else:
-            aliaslist.append(value)
-
-    for alias in aliaslist:
-        sqlstatement = re.sub("([\s(])({})([.,)\s])".format(alias), replaceWithAlias, sqlstatement, flags=re.IGNORECASE | re.MULTILINE)
+            # Filter out tablename and then replace alias with a format variable containing index number
+            sqlstatement = re.sub(regexstring.format(table), replaceWithAlias, sqlstatement, flags=re.IGNORECASE | re.MULTILINE)
+            sqlstatement = re.sub("{{{}}}".format(table), "", sqlstatement, flags=re.IGNORECASE | re.MULTILINE)
+            sqlstatement = re.sub(regexstring.format(alias), replaceWithAlias, sqlstatement, flags=re.IGNORECASE | re.MULTILINE)
+            sqlstatement = re.sub("{{{}}}".format(alias), "{{{}}}".format(i), sqlstatement, flags=re.IGNORECASE | re.MULTILINE)
 
     return sqlstatement
 
 def replaceWithAlias(matchobj):
     return "{}{{{}}}{}".format(matchobj.group(1), matchobj.group(2), matchobj.group(3))
+
+# Generates a plan for joining all partitions.
+# Format is a list of ((m,n), d)
+# where m and n is the index of the table partition in tableinfo being joined
+# and where d is the direction a partition needs to be transferred
+# (-1 means partition in node n -> m, 1 is m -> n, and 0 is no transfer)
+def getQueryPlan(tableM, tableN, tableinfoM, tableinfoN):
+    numOfM = len(tableinfoM)
+    numOfN = len(tableinfoN)
+
+    tableinfoM = sorted(tableinfoM, key=lambda x: int(x['nodeid']))
+    tableinfoN = sorted(tableinfoN, key=lambda x: int(x['nodeid']))
+
+    plan = list()
+
+    joinlist = list()
+    for m in range(numOfM):
+        for n in range(numOfN):
+            joinlist.append((m,n))
+
+    nodeload = list(0 for x in range(max(numOfM, numOfN)))
+    for join in joinlist:
+        m = join[0]
+        n = join[1]
+        m_nodeID = int(tableinfoM[m]['nodeid'])
+        n_nodeID = int(tableinfoN[n]['nodeid'])
+        if m_nodeID == n_nodeID:
+            nodeload[m_nodeID - 1] += 1
+            plan.append(((m,n), 0))
+            # print("join: {} load: {}".format(((m,n), 0), nodeload))
+
+    for join in joinlist:
+        m = join[0]
+        n = join[1]
+        m_nodeID = int(tableinfoM[m]['nodeid'])
+        n_nodeID = int(tableinfoN[n]['nodeid'])
+        if m_nodeID != n_nodeID:
+            if nodeload[m_nodeID - 1] > nodeload[n_nodeID - 1]:
+                nodeload[n_nodeID - 1] += 1
+                transferdirection = 1
+            else:
+                nodeload[m_nodeID - 1] += 1
+                transferdirection = -1
+            plan.append(((m,n), transferdirection))
+            # print("join: {} load: {}".format(((m,n), transferdirection), nodeload))
+    return True
+
 
 
 def checkForJoin(comparisons):
@@ -72,7 +146,7 @@ def checkForJoin(comparisons):
         try:
             match1 = re.match('([\w$]+)\.([\w$]+)', item[0])
             match2 = re.match('([\w$]+)\.([\w$]+)', item[1])
-            if match1.group(2) == match2.group(2):
+            if match1 and match2:
                 return True
         except:
             pass
@@ -87,19 +161,19 @@ if __name__ =="__main__":
         quit()
     if len(sys.argv) > 2:
         filename = sys.argv[2]
-        filetype = filename.split(".")
+        # filetype = filename.split(".")
     else:
         print("Not enough arguements given.")
         quit()
 
     (cataloginfo, numnodes, nodeinfo, tablename, partitioninfo, partitionnodeinfo) = cfgProcessor.process(clustername)
-    try:
-        if filetype[1] == "ddl":
-            (cataloginfo, numnodes, nodeinfo, tablename, partitioninfo, partitionnodeinfo) = cfgProcessor.process(clustername)
-            runDDL(cataloginfo, numnodes, nodeinfo, filename)
-            quit()
-    except:
-        pass
+    # try:
+    #     if filetype[1] == "ddl":
+    #         (cataloginfo, numnodes, nodeinfo, tablename, partitioninfo, partitionnodeinfo) = cfgProcessor.process(clustername)
+    #         runDDL(cataloginfo, numnodes, nodeinfo, filename)
+    #         quit()
+    # except:
+    #     pass
     if cataloginfo:
         if tablename:
             loadCSV(

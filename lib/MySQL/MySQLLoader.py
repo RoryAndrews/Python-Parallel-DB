@@ -14,7 +14,7 @@ class MySQLLoader(MySQLListener):
     def __init__(self):
         self.columns = list()
         self.comparisons = list()
-        self.aliases = dict()
+        self.aliases = list()
         self.sqltype = None
 
     # Exit a parse tree produced by MySQLParser#bool_primary.
@@ -48,7 +48,7 @@ class MySQLLoader(MySQLListener):
                 alias = child.getText()
 
         if tablename:
-            self.aliases[tablename] = alias
+            self.aliases.append((tablename, alias))
 
     def enterData_manipulation_statements(self, ctx:MySQLParser.Data_manipulation_statementsContext):
         # print(type(ctx.getChild(0)).__name__)
