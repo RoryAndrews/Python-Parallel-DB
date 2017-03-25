@@ -1,0 +1,33 @@
+10351	172970.32	Fern Brossard
+10849	195560.26	Frankie Lazarus
+1126	103456.72	Ngoc Dafoe
+11585	100137.79	Kathern Huse
+12601	141117.61	Liam
+13075	44192.73	Grady Chauez
+13462	83237.16	Allan Stjacques
+13774	137145.20	Jonie Brouwer
+14353	273698.57	Cassondra Czajkowski
+1444	257451.16	Jermaine Familia
+1634	122899.72	Serina Torgrimson
+166	269504.12	Vanessa Madry
+2513	12898.71	Hang Hight
+254	112573.90	Faviola Crutcher
+2789	111131.43	Abbie Loveall
+2893	94567.98	Laurie Garnica
+3220	74571.04	Linsey Ranallo
+3830	6829.02	Herma Carbone
+4276	63717.81	Emerson Paskett
+4582	175768.16	Hilton Asmus
+4894	66775.72	Pearlene Barrows
+4997	144008.70	Noah
+5359	135974.74	Marcelo Engman
+5524	52232.65	Abe Indelicato
+6476	87984.15	Donnetta Dostal
+6880	78683.93	Steve Crosson
+dbuser	CUSTOMERS	1	7000	+inf
+dbuser	CUSTOMERS	1	-inf	7000
+dbuser	ORDERS	1	7000	+inf
+dbuser	ORDERS	1	-inf	7000
+nodeuser	tname	partmtd	partparam1	partparam2
+O_CUSTKEY	O_TOTALPRICE	C_CUSTNAME
+O_CUSTKEY	O_TOTALPRICE	C_CUSTNAME

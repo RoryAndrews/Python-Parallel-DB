@@ -1,6 +1,6 @@
-mysqladmin -u root -pXXXXXX drop jesusrory1
-mysqladmin -u root -pXXXXXX drop jesusrory2
-mysqladmin -u root -pXXXXXX create jesusrory1
-mysqladmin -u root -pXXXXXX create jesusrory2
-mysql -u root -pXXXXXX jesusrory1 < test3-jeg6-1.pre.sql
-mysql -u root -pXXXXXX jesusrory2 < test3-jeg6-1.pre.sql
+mysqladmin -u dbuser -pmypasswd drop jesusrory1
+mysqladmin -u dbuser -pmypasswd drop jesusrory2
+mysqladmin -u dbuser -pmypasswd create jesusrory1
+mysqladmin -u dbuser -pmypasswd create jesusrory2
+mysql -u dbuser -pmypasswd jesusrory1 < test3-jeg6-1.pre.sql
+mysql -u dbuser -pmypasswd jesusrory2 < test3-jeg6-1.pre.sql
