@@ -5,6 +5,7 @@ from processSQL import *
 from lib import cfgProcessor
 from loadCSV import *
 from runDDL import *
+from lib.PartitionJoinThread import PartitionJoinThread
 
 
 def runSQL(cataloginfo, numnodes, nodeinfo, sqlfilename):
@@ -38,7 +39,9 @@ def runSQL(cataloginfo, numnodes, nodeinfo, sqlfilename):
 
 def joinQuery(cataloginfo, aliases, columns, sqlstatement, sqlfilename):
     cparams = catdb.getCatalogParams(cataloginfo)
-
+    if not cparams:
+        print("runSQL: Catalog info invalid.")
+        return False
     if len(aliases) > 2:
         print("runSQL: More than two tables in a query is not allowed.")
         return False
@@ -54,21 +57,50 @@ def joinQuery(cataloginfo, aliases, columns, sqlstatement, sqlfilename):
     tableinfoN = catdb.queryTables(conn, tableN)
 
     plan = getQueryPlan(tableM, tableN, tableinfoM, tableinfoN)
+    print("plan: {}".format(plan))
 
     if not plan:
         print("runSQL: Failed to generate plan.")
         return False
 
     partitionedsql = getPartitionedQuery(sqlstatement, aliases, columns)
+    print(partitionedsql)
 
+    if len(tableinfoM) > len(tableinfoN):
+        node_cnxpool_list = list(None for x in range(len(tableinfoM)))
+        for tableinfo in tableinfoM:
+            nodeid = int(tableinfo['nodeid'])
+            nparams = catdb.getRowNodeParams(tableinfo)
+            node_cnxpool_list[nodeid - 1] = mysql.connector.pooling.MySQLConnectionPool(pool_name = "cnxpool{}".format(nodeid - 1), pool_size = len(plan), **nparams)
+    else:
+        node_cnxpool_list = list(None for x in range(len(tableinfoN)))
+        for tableinfo in tableinfoN:
+            nodeid = int(tableinfo['nodeid'])
+            nparams = catdb.getRowNodeParams(tableinfo)
+            node_cnxpool_list[nodeid - 1] = mysql.connector.pooling.MySQLConnectionPool(pool_name = "cnxpool{}".format(nodeid - 1), pool_size = len(plan), **nparams)
 
-    # threadlist = list()
-    # for (i,step) in enumerate(plan):
-    #     m = step[0][0]
-    #     n = step[0][1]
-    #     transferdirection = step[1]
-    #     threadlist.append(PartitionJoinThread(threadID=i, tableM=tableM, tableinfoM=tableinfoM[m], tableN=tableN, tableinfoN=tableinfoN[n], columns=columns, partitionedsql=partitionedsql, sqlfilename=sqlfilename))
-    # print(partitionedsql)
+    print(node_cnxpool_list)
+
+    threadlist = list()
+    for (i,step) in enumerate(plan):
+        m = step[0][0]
+        n = step[0][1]
+        threadlist.append(PartitionJoinThread(
+                                        threadID=i, plan=step,
+                                        tableM=tableM, tableM_connection=node_cnxpool_list[m].get_connection(),
+                                        tableN=tableN, tableN_connection=node_cnxpool_list[n].get_connection(),
+                                        columns=columns, partitionedsql=partitionedsql,
+                                        sqlfilename=sqlfilename))
+
+    for thread in threadlist:
+        print(thread)
+        print(thread.plan)
+        print(thread.tableM)
+        print(thread.tableM_connection.server_host)
+        print(thread.tableN)
+        print(thread.tableN_connection.server_host)
+        print(thread.columns)
+
 
 
 
@@ -131,12 +163,20 @@ def getQueryPlan(tableM, tableN, tableinfoM, tableinfoN):
             if nodeload[m_nodeID - 1] > nodeload[n_nodeID - 1]:
                 nodeload[n_nodeID - 1] += 1
                 transferdirection = 1
-            else:
+            elif nodeload[m_nodeID - 1] < nodeload[n_nodeID - 1]:
                 nodeload[m_nodeID - 1] += 1
                 transferdirection = -1
+            else:
+                if m_nodeID > n_nodeID:
+                    nodeload[m_nodeID - 1] += 1
+                    transferdirection = -1
+                else:
+                    nodeload[n_nodeID - 1] += 1
+                    transferdirection = 1
             plan.append(((m,n), transferdirection))
             # print("join: {} load: {}".format(((m,n), transferdirection), nodeload))
-    return True
+    print("node load: {}".format(nodeload))
+    return plan
 
 
 
