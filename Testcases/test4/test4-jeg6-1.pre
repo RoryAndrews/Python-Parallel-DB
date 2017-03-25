@@ -1,0 +1,8 @@
+mysqladmin -u dbuser -pmypasswd drop jesusrory1
+mysqladmin -u dbuser -pmypasswd drop jesusrory2
+mysqladmin -u dbuser -pmypasswd create jesusrory1
+mysqladmin -u dbuser -pmypasswd create jesusrory2
+mysql -u dbuser -pmypasswd jesusrory1 < test4-jeg6-1.pre.sql
+mysql -u dbuser -pmypasswd jesusrory2 < test4-jeg6-1.pre.sql
+mysql -u dbuser -pmypasswd jesusrory1 < test4-jeg6-1.pre-2.sql
+mysql -u dbuser -pmypasswd jesusrory2 < test4-jeg6-1.pre-2.sql
