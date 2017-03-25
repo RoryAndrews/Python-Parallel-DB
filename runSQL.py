@@ -63,6 +63,16 @@ def joinQuery(cataloginfo, aliases, columns, sqlstatement, sqlfilename):
         print("runSQL: Failed to generate plan.")
         return False
 
+    newcol = list()
+    for a in aliases:
+        table = a[0]
+        alias = a[1]
+        if alias:
+            for c in columns:
+                if alias == c[0]:
+                    newcol.append((table, c[1]))
+    columns = newcol
+
     partitionedsql = getPartitionedQuery(sqlstatement, aliases, columns)
     print(partitionedsql)
 
@@ -79,8 +89,6 @@ def joinQuery(cataloginfo, aliases, columns, sqlstatement, sqlfilename):
             nparams = catdb.getRowNodeParams(tableinfo)
             node_cnxpool_list[nodeid - 1] = mysql.connector.pooling.MySQLConnectionPool(pool_name = "cnxpool{}".format(nodeid - 1), pool_size = len(plan), **nparams)
 
-    print(node_cnxpool_list)
-
     threadlist = list()
     for (i,step) in enumerate(plan):
         m = step[0][0]
@@ -92,14 +100,17 @@ def joinQuery(cataloginfo, aliases, columns, sqlstatement, sqlfilename):
                                         columns=columns, partitionedsql=partitionedsql,
                                         sqlfilename=sqlfilename))
 
+    # for thread in threadlist:
+    #     print(thread)
+    #     print(thread.plan)
+    #     print(thread.tableM)
+    #     print(thread.tableM_connection.server_host)
+    #     print(thread.tableN)
+    #     print(thread.tableN_connection.server_host)
+    #     print(thread.columns)
+
     for thread in threadlist:
-        print(thread)
-        print(thread.plan)
-        print(thread.tableM)
-        print(thread.tableM_connection.server_host)
-        print(thread.tableN)
-        print(thread.tableN_connection.server_host)
-        print(thread.columns)
+        thread.run()
 
 
 
