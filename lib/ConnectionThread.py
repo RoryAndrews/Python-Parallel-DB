@@ -56,8 +56,9 @@ class ConnectionThread (threading.Thread):
                     self.nodeconn.rollback()
             elif re.search("SELECT ", self.sqlstatement, flags=re.IGNORECASE | re.MULTILINE):
                 cursor.execute(self.sqlstatement)
-                rows = cursor.fetchall(size=self.fetchsize)
-                print(rows)
+                results = cursor.fetchall()
+                for row in results:
+                    print(*row, sep=' | ')
 
                 success = True
                 prevent_success_msg = True

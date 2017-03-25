@@ -6,6 +6,7 @@ from lib import cfgProcessor
 from loadCSV import *
 from runDDL import *
 from lib.PartitionJoinThread import PartitionJoinThread
+from lib.ConnectionThread import ConnectionThread
 
 
 def runSQL(cataloginfo, numnodes, nodeinfo, sqlfilename):
@@ -26,15 +27,37 @@ def runSQL(cataloginfo, numnodes, nodeinfo, sqlfilename):
         print(str(e))
         print("Error in runSQL: Could not parse sql statement.")
 
+    mysql.connector.pooling.CNX_POOL_MAXSIZE = 128
+
     (sqltype, aliases, columns, comparisons) = processSQL(sqlfilename)
     # print("sqltype: {}, aliases: {}, columns: {}, comparisons: {}".format(sqltype, aliases, columns, comparisons))
     if sqltype == 'select':
         if checkForJoin(comparisons):
             return joinQuery(cataloginfo, aliases, columns, sqlstatement, sqlfilename)
         else:
-            print("Normal query.")
+            runQuery(cataloginfo, aliases, sqlstatement, sqlfilename)
     else:
         print("runSQL: Only CREATE TABLE, DROP TABLE, and SELECT statements are allowed.")
+
+
+def runQuery(cataloginfo, aliases, sqlstatement, sqlfilename):
+    cparams = catdb.getCatalogParams(cataloginfo)
+    if not cparams:
+        print("runSQL: Catalog info invalid.")
+        return False
+
+    conn = mysql.connector.connect(**cparams)
+    tableinfo_list = catdb.queryTables(conn, aliases[0][0])
+    # cat_cnxpool = mysql.connector.pooling.MySQLConnectionPool(pool_name = "cat_cnxpool", pool_size = len(tableinfo_list), **cparams)
+
+    threadlist = list()
+    for (i,tableinfo) in enumerate(tableinfo_list):
+        nparams = catdb.getRowNodeParams(tableinfo)
+        nodeconn = mysql.connector.connect(**nparams)
+        threadlist.append(ConnectionThread(i, None, nodeconn, sqlstatement, sqlfilename))
+
+    for thread in threadlist:
+        thread.run()
 
 
 def joinQuery(cataloginfo, aliases, columns, sqlstatement, sqlfilename):
@@ -70,7 +93,8 @@ def joinQuery(cataloginfo, aliases, columns, sqlstatement, sqlfilename):
             for c in columns:
                 if alias == c[0]:
                     newcol.append((table, c[1]))
-    columns = newcol
+    if len(newcol) == len(columns):
+        columns = newcol
 
     partitionedsql = getPartitionedQuery(sqlstatement, aliases, columns)
 
