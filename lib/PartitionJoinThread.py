@@ -18,8 +18,34 @@ class PartitionJoinThread (threading.Thread):
         self.sqlfilename = sqlfilename
 
     def run(self):
-        if self.plan[1] != 0:
+        transfer = self.plan[1]
+        if transfer != 0:
             self.__transfer()
+
+        cursor = self.tableM_connection.cursor()
+
+        if transfer <= 0:
+            cursor = self.tableM_connection.cursor()
+        else:
+            cursor = self.tableN_connection.cursor()
+
+        sqlstatement = self.__generateSQL()
+
+        cursor.execute(sqlstatement)
+        results = cursor.fetchall()
+
+        for row in results:
+            print(*row, sep=' | ')
+
+    def __generateSQL(self):
+        transfer = self.plan[1]
+
+        if transfer == 0:
+            return self.partitionedsql.format(self.tableM, self.tableN)
+        elif transfer > 0:
+            return self.partitionedsql.format(self.temp_tablename, self.tableN)
+        else:
+            return self.partitionedsql.format(self.tableM, self.temp_tablename)
 
     def __transfer(self):
         if self.plan[1] < 0:
@@ -35,20 +61,14 @@ class PartitionJoinThread (threading.Thread):
             in_conn = self.tableN_connection
             self.temp_tablename = "_TEMP_" + self.tableM + "" + str(self.plan[0][0] + 1)
 
-        print(self.plan)
-        print("temp table: {}, alias: {}".format(out_table, self.temp_tablename))
-
         transferquery = "SELECT "
         for info in self.columns:
             table = info[0]
             column = info[1]
-            print(table, column)
             if table == out_table:
                 transferquery += column + ", "
         transferquery = transferquery[:-2] # to remove final ", "
         transferquery += " FROM " + out_table + ";"
-
-        print(transferquery)
 
         out_cursor = out_conn.cursor(buffered=True)
         in_cursor = in_conn.cursor(buffered=True)
@@ -67,8 +87,6 @@ class PartitionJoinThread (threading.Thread):
         create_temp_table = create_temp_table[:-2] # to remove final ", "
         create_temp_table += ");"
 
-        print(create_temp_table)
-
         in_cursor.execute(create_temp_table)
 
         insert_statement = "INSERT INTO {} (".format(self.temp_tablename)
@@ -81,8 +99,6 @@ class PartitionJoinThread (threading.Thread):
         insert_statement = insert_statement[:-2] # to remove final ", "
         insert_statement += ")"
 
-        print(insert_statement)
-        print(results)
         in_cursor.executemany(insert_statement, results)
         in_cursor.close()
         out_cursor.close()

@@ -1,3 +1,5 @@
+// Modified from source: https://github.com/leonchen83/antlr4-mysql 
+
 grammar MySQL;
 
 @header

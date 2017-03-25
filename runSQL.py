@@ -27,7 +27,7 @@ def runSQL(cataloginfo, numnodes, nodeinfo, sqlfilename):
         print("Error in runSQL: Could not parse sql statement.")
 
     (sqltype, aliases, columns, comparisons) = processSQL(sqlfilename)
-    print("sqltype: {}, aliases: {}, columns: {}, comparisons: {}".format(sqltype, aliases, columns, comparisons))
+    # print("sqltype: {}, aliases: {}, columns: {}, comparisons: {}".format(sqltype, aliases, columns, comparisons))
     if sqltype == 'select':
         if checkForJoin(comparisons):
             return joinQuery(cataloginfo, aliases, columns, sqlstatement, sqlfilename)
@@ -57,7 +57,6 @@ def joinQuery(cataloginfo, aliases, columns, sqlstatement, sqlfilename):
     tableinfoN = catdb.queryTables(conn, tableN)
 
     plan = getQueryPlan(tableM, tableN, tableinfoM, tableinfoN)
-    print("plan: {}".format(plan))
 
     if not plan:
         print("runSQL: Failed to generate plan.")
@@ -74,7 +73,6 @@ def joinQuery(cataloginfo, aliases, columns, sqlstatement, sqlfilename):
     columns = newcol
 
     partitionedsql = getPartitionedQuery(sqlstatement, aliases, columns)
-    print(partitionedsql)
 
     if len(tableinfoM) > len(tableinfoN):
         node_cnxpool_list = list(None for x in range(len(tableinfoM)))
@@ -186,7 +184,6 @@ def getQueryPlan(tableM, tableN, tableinfoM, tableinfoN):
                     transferdirection = 1
             plan.append(((m,n), transferdirection))
             # print("join: {} load: {}".format(((m,n), transferdirection), nodeload))
-    print("node load: {}".format(nodeload))
     return plan
 
 
